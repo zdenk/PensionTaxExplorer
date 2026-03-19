@@ -78,6 +78,11 @@ export const greece: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_140,       // EUR/month — Eurostat SES / ELSTAT 2022 adj. to 2026
+  wagePercentiles: {         // EUR/month — Eurostat SES / ELSTAT 2022 adj. to 2026
+    p10: 760, p25: 900, p75: 1_540, p90: 2_150,
+  },
+  minimumWage: 968,          // EUR/month — YA 25825/2025 (ελάχιστα αμοιβή 2026)
   oecdAverageWage: 1_350, // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): ~EUR 16,200/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

@@ -76,6 +76,11 @@ export const slovenia: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_780,       // EUR/month — Eurostat SES / SURS 2022 adj. to 2026
+  wagePercentiles: {         // EUR/month — Eurostat SES / SURS 2022 adj. to 2026
+    p10: 1_050, p25: 1_350, p75: 2_500, p90: 3_600,
+  },
+  minimumWage: 1_253,        // EUR/month — ZMINV 2026 (minimalna plača, Ur.l. RS)
   oecdAverageWage: 2_150, // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): ~EUR 25,800/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

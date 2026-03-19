@@ -46,6 +46,11 @@ export const estonia: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_740,        // EUR/month — Eurostat SES / Statistics Estonia 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / Statistics Estonia 2022 adj. to 2026
+    p10: 950, p25: 1_250, p75: 2_400, p90: 3_400,
+  },
+  minimumWage: 886,           // EUR/month — Töölepingu seadus 2026 (alampalk)
   oecdAverageWage: 2_207,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 26,484/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

@@ -16,6 +16,7 @@ import { Graph1_CareerTimeline } from './Graph1_CareerTimeline';
 import { Graph2_Accumulation } from './Graph2_Accumulation';
 import { WagePieChart } from './Graph2_Accumulation';
 import { Graph3_ReplacementRateCurve } from './Graph3_ReplacementRateCurve';
+import { WageDistributionChart } from './WageDistributionChart';
 
 interface Props {
   country: CountryConfig;
@@ -286,6 +287,13 @@ export function CountryCard({ country, result, selfEmploymentModeName, appState,
         country={country}
         modeName={selfEmploymentModeName}
         grossMonthly={result.resolvedWage.grossLocal}
+      />
+
+      <WageDistributionChart
+        country={country}
+        selectedWageLocal={result.resolvedWage.grossLocal}
+        currency={currency}
+        eurExchangeRate={country.eurExchangeRate}
       />
 
       <KPIRow

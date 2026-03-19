@@ -48,6 +48,11 @@ export const ireland: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 3_680,        // EUR/month — Eurostat SES / CSO 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / CSO Ireland 2022 adj. to 2026
+    p10: 1_950, p25: 2_650, p75: 4_900, p90: 6_800,
+  },
+  minimumWage: 2_340,         // EUR/month — National Minimum Wage Orders 2026 (13.50 EUR/hr × 173hr)
   oecdAverageWage: 4_447,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 53,364/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

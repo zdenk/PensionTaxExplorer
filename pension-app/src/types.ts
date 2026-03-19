@@ -407,6 +407,36 @@ export interface CountryConfig {
   // Wages
   averageWage: number;        // monthly gross, local currency (AW) — model/national-statistics source
   /**
+   * Statutory (or effective collective-agreement) monthly gross minimum wage
+   * (local currency). Used as the left-boundary cutoff of the wage distribution
+   * chart — no worker is paid below this floor.
+   * Source: Eurostat minimum wage statistics / national labour ministry decrees 2026.
+   * Countries without a statutory minimum (SE, DK, FI, AT, IT) use the effective
+   * sectoral floor from the dominant collective agreement.
+   */
+  minimumWage?: number;
+  /**
+   * Monthly gross median wage (local currency).
+   * Used in the wage distribution chart to parameterise the lognormal curve.
+   * Source: Eurostat Structure of Earnings Survey (earn_ses_monthly) / OECD, adjusted to data year.
+   * Omit for countries where median data is unavailable — chart falls back to a
+   * σ = 0.5 lognormal centred on the averageWage.
+   */
+  medianWage?: number;
+  /**
+   * Gross wage percentiles (local currency, monthly) from Eurostat SES / national sources.
+   * When present, the wage distribution chart fits a lognormal curve to all five
+   * empirical points (P10, P25, P50=medianWage, P75, P90) using OLS in log-space,
+   * giving a substantially more accurate distribution shape and mode estimate.
+   * Source: Eurostat Structure of Earnings Survey (earn_ses) 2022, adjusted to data year.
+   */
+  wagePercentiles?: {
+    p10: number;  // 10th percentile, monthly gross, local currency
+    p25: number;  // 25th percentile
+    p75: number;  // 75th percentile
+    p90: number;  // 90th percentile
+  };
+  /**
    * Monthly gross average wage from OECD Taxing Wages (local currency).
    * Used when awSource === 'oecd' to normalise × AW multipliers against the
    * OECD reference benchmark rather than the model's national-statistics estimate.

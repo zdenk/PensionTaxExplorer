@@ -51,6 +51,11 @@ export const italy: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 2_380,       // EUR/month — Eurostat SES / ISTAT 2022 adj. to 2026
+  wagePercentiles: {         // EUR/month — Eurostat SES / ISTAT 2022 adj. to 2026
+    p10: 1_300, p25: 1_700, p75: 3_100, p90: 4_400,
+  },
+  minimumWage: 1_100,        // EUR/month — effective sectoral floor (CCNL commercio / turismo 2026; no statutory min)
   oecdAverageWage: 2_825, // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): ~EUR 33,900/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

@@ -65,6 +65,11 @@ export const denmark: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 41_500,         // DKK/month — Eurostat SES / Danmarks Statistik 2022 adj. to 2026
+  wagePercentiles: {            // DKK/month — Eurostat SES / Danmarks Statistik 2022 adj. to 2026
+    p10: 26_000, p25: 32_500, p75: 53_000, p90: 72_000,
+  },
+  minimumWage: 25_000,          // DKK/month — effective collective floor (HK / 3F overenskomst 2026)
   oecdAverageWage: 52_998,  // DKK/month — OECD Taxing Wages 2025, Table I.1 (2024): DKK 635,976/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

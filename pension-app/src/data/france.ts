@@ -43,6 +43,11 @@ export const france: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 2_835,        // EUR/month — Eurostat SES / INSEE 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / INSEE DARES 2022 adj. to 2026
+    p10: 1_530, p25: 1_880, p75: 3_650, p90: 5_100,
+  },
+  minimumWage: 1_802,         // EUR/month — SMIC 2026 (Décret n°2025-1321; 11.88 EUR/hr gross)
   oecdAverageWage: 3_947,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 47,364/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

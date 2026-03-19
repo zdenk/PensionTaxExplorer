@@ -41,6 +41,11 @@ export const germany: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 3_460,        // EUR/month — Destatis SES 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Destatis SES 2022 adj. to 2026
+    p10: 1_950, p25: 2_600, p75: 4_800, p90: 6_700,
+  },
+  minimumWage: 2_268,         // EUR/month — § 1 MiLoG: 13.10 EUR/hr × 173hr (2026 Mindestlohnkommission)
   oecdAverageWage: 4_339,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 52,068/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

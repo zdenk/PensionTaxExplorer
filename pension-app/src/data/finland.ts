@@ -59,6 +59,11 @@ export const finland: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 3_315,        // EUR/month — Eurostat SES / Statistics Finland 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / Statistics Finland 2022 adj. to 2026
+    p10: 1_950, p25: 2_500, p75: 4_100, p90: 5_600,
+  },
+  minimumWage: 1_800,         // EUR/month — effective TES floor (dominant sector collective agreements 2026)
   oecdAverageWage: 3_978,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 47,736/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 
