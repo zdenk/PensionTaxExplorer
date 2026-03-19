@@ -1,0 +1,582 @@
+/**
+ * Czech Republic — Full Country Config 2026
+ *
+ * All parameters sourced from official 2026 MPSV / ČSSZ decrees.
+ * Validated against Appendix A reference table in Technical Design v2.0.
+ *
+ * Key legislation:
+ *   - Zákon č. 155/1995 Sb. (Pension Insurance Act) §§ 15-16
+ *   - Zákon č. 589/1992 Sb. (SSC contributions)
+ *   - Zákon č. 586/1992 Sb. (Income Tax Act)
+ *   - Nařízení vlády (Government Decree) for pension year 2026
+ */
+
+import type { CountryConfig } from '../types';
+
+/** CZ AW 2026 per MPSV Government Decree (48,967 CZK/month) */
+const AW_2026 = 48_967;
+
+// ─── Paušální daň (flat-tax scheme for OSVČ) — 2026 ──────────────────────────
+// Source: Zákon č. 7/2021 Sb. (paušální daň), as amended by zákon č. 366/2022 Sb.
+//
+// Three bands based on annual gross income:
+//   Pásmo 1 (Band 1): ≤ 1,000,000 CZK/year
+//   Pásmo 2 (Band 2): ≤ 1,500,000 CZK/year (or ≤ 2,000,000 if ≥ 75% income from
+//                     80%/60%-expense activities — simplified in model to 1,500,000 limit)
+//   (Pásmo 3 not modelled here)
+//
+// The OSVČ pays a single fixed monthly lump sum covering social + health + tax advance.
+// SSC is always computed at the band's statutory fixed assessment base (NOT 50% of profit).
+//
+// 2026 official monthly payments (source: Finanční správa ČR / ČSSZ decree 2026):
+//
+//   Band 1: total 9,984 CZK/month
+//     = 100 CZK (daň) + 6,578 CZK (soc, base 22,527 CZK) + 3,306 CZK (zdrav, base 24,484 CZK)
+//     Note: social base = 40% of PD reference AW; health base = 50% of AW_2026.
+//
+//   Band 2: total 16,745 CZK/month
+//     = 4,963 CZK (daň) + 8,191 CZK (soc, base 28,050 CZK) + 3,591 CZK (zdrav, base 26,600 CZK)
+
+/** Annual income ceiling for Pásmo 1: 1,000,000 CZK/year */
+const PD_BAND1_LIMIT = 1_000_000;
+/** Annual income ceiling for Pásmo 2: 1,500,000 CZK/year */
+const PD_BAND2_LIMIT = 1_500_000;
+
+/**
+ * Band 1: social assessment base = 22,527 CZK/month
+ * Derived: 6,578 CZK ÷ 29.2% = 22,527 CZK (~40% of PD reference AW).
+ * Band 1 health assessment base re-uses the standard 50% of AW_2026 = 24,484 CZK
+ * (13.5% × 24,484 → ceil = 3,306 CZK).
+ */
+const PD_BAND1_SOCIAL_BASE = 22_527; // CZK/month — gives exactly 6,578 CZK social (29.2%)
+
+/**
+ * Band 2: explicit assessment bases from the 2026 decree.
+ *   Social: 28,050 CZK → 29.2% = 8,191 CZK
+ *   Health: 26,600 CZK → 13.5% = 3,591 CZK
+ */
+const PD_BAND2_SOCIAL_BASE = 28_050; // CZK/month
+const PD_BAND2_HEALTH_BASE = 26_600; // CZK/month
+
+/**
+ * Fixed monthly income tax advances per band (zákon č. 7/2021 Sb. §7f; Finanční správa 2026).
+ * Band 1: 100 CZK | Band 2: 4,963 CZK
+ */
+const PD_BAND1_TAX_ADVANCE = 100;
+const PD_BAND2_TAX_ADVANCE = 4_963;
+
+/**
+ * Czech income tax uses the "superhrubá mzda" (super-gross) system, which was
+ * abolished from 2021. From 2021 the tax base is the gross wage.
+ * Progressive rates: 15% up to 3× AW/month; 23% above.
+ * Personal allowance (základní sleva na poplatníka): 30,840 CZK/year = 2,570 CZK/month
+ * Source: Zákon č. 586/1992 Sb. §§ 16, 35ba (as amended 2024-2026)
+ */
+const MONTHLY_PERSONAL_ALLOWANCE_CZK = 2_570; // 30,840 / 12
+
+/**
+ * 2026 income tax bracket thresholds.
+ * The 23% rate kicks in above 3× AW annually.
+ * 3 × 48,967 × 12 = 1,766,812 CZK/year → 147,234 CZK/month
+ */
+const TAX_BRACKET_THRESHOLD = 3 * AW_2026; // 147,234 CZK/month
+
+/**
+ * Reduction thresholds for pension assessment base (výpočtový základ).
+ * Source: Nařízení vlády 2026
+ *   1st threshold: 44% × AW = 21,546 CZK @ 99%  (reduced from 100% by 2026 pension reform)
+ *   2nd threshold: 4×  AW = 195,868 CZK @ 26%
+ *   Above 2nd threshold                 @ 0%
+ */
+const REDUCTION_THRESHOLD_1 = Math.round(0.44 * AW_2026); // 21,546 CZK (44% of AW)
+const REDUCTION_THRESHOLD_2 = 4 * AW_2026;                // 195,868 CZK
+
+export const czechRepublic: CountryConfig = {
+  // ─── Identity ─────────────────────────────────────────────────────────────
+  code: 'CZ',
+  name: 'Czech Republic',
+  currency: 'CZK',
+  eurExchangeRate: 25.0,   // approx EUR/CZK as of Jan 2026; update via ECB API annually
+  dataYear: 2026,
+
+  // ─── Wages ────────────────────────────────────────────────────────────────
+  averageWage: AW_2026,
+  oecdAverageWage: 41_420,  // CZK/month — OECD Taxing Wages 2025, Table I.1 (2024): CZK 497,040/year
+  wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
+
+  // ─── Pension Defaults ─────────────────────────────────────────────────────
+  defaults: {
+    careerStartAge: 25,
+    retirementAge: 65,
+    retirementDuration: 20, // age 65 → 85 (conservative; design uses 25 years to 90)
+  },
+
+  // ─── Income Tax ───────────────────────────────────────────────────────────
+  // Zákon č. 586/1992 Sb. §§ 16, 35ba
+  // Tax base: gross (superhrubá abolished 2021)
+  // Two brackets: 15% up to 4×AW/month; 23% above
+  // Personal allowance applied after computing tax (as a flat monthly credit, not a deduction)
+  // Implementation note: we model allowance as a deduction from taxable base equivalent to
+  // monthly credit (2,570 CZK) to correctly reduce tax at the 15% rate, matching Czech practice.
+  incomeTax: {
+    type: 'progressive',
+    personalAllowance: MONTHLY_PERSONAL_ALLOWANCE_CZK,
+    allowanceIsCredit: true,   // CZ §35ba: základní sleva na poplatníka is a tax credit, not a base deduction
+    taxBase: 'gross',
+    // CZ § 38h: monthly záloha is computed on gross rounded UP to nearest 100 CZK
+    taxBaseRounding: 'ceil100',
+    brackets: [
+      { upTo: TAX_BRACKET_THRESHOLD, rate: 0.15 },
+      { upTo: Infinity, rate: 0.23 },
+    ],
+  },
+
+  // ─── Employee SSC ─────────────────────────────────────────────────────────
+  // Zákon č. 589/1992 Sb.
+  // Total employee SSC = 11.0% of gross (no ceiling for health insurance;
+  // pension + sick leave + unemployment apply up to max base = 48× AW/year)
+  //   - Pension insurance (důchodové pojištění):    6.5%
+  //   - Health insurance (zdravotní pojištění):     4.5%  (no ceiling, paid via ZP schemes)
+  //   Note: Czech health insurance is paid separately to health insurance companies,
+  //   but it is an employee SSC for modelling purposes.
+  // Annual SSC ceiling (max. vyměřovací základ): 48 × AW = 48 × 48,967 = 2,350,416 CZK
+  // → Monthly equivalent: 195,868 CZK (= 2nd reduction threshold)
+  employeeSSC: {
+    ceiling: REDUCTION_THRESHOLD_2, // 195,868 CZK/month for pension; health is uncapped
+    components: [
+      {
+        label: 'Pension Insurance',
+        rate: 0.065,
+        ceiling: REDUCTION_THRESHOLD_2,
+        pensionFunded: true,
+      },
+      {
+        // Nemocenské pojištění — employee sick-leave insurance, mandatory from 1 Jan 2024
+        // Zákon č. 187/2006 Sb. (as amended by zákon č. 270/2023 Sb.)
+        label: 'Sick Leave Insurance',
+        rate: 0.006,
+        ceiling: REDUCTION_THRESHOLD_2,
+        pensionFunded: false,
+      },
+      {
+        label: 'Health Insurance',
+        rate: 0.045,
+        ceiling: undefined, // uncapped
+        pensionFunded: false,
+        // Zákon č. 592/1992 Sb. § 3 — health insurance contributions rounded up
+        roundUp: true,
+      },
+    ],
+  },
+
+  // ─── Employer SSC ─────────────────────────────────────────────────────────
+  // Zákon č. 589/1992 Sb.
+  // Total employer SSC = 33.8% of gross (same ceiling as employee for the non-health portions)
+  //   - Pension insurance:          21.5%  ← pension-funded (to pension accounts via ČSSZ)
+  //   - Sick leave (nemocenské):     2.1%  ← NOT pension-funded (sickness benefit fund)
+  //   - State employment policy:     1.2%  ← NOT pension-funded (labour market fund)
+  //   - Health insurance:            9.0%  ← health (to ZP companies)
+  //   Total:                        33.8%
+  // Note: ČSSZ collects 21.5+2.1+1.2 = 24.8% in a single payment, but only the
+  // 21.5% pension insurance portion is directed to the pension system.
+  employerSSC: {
+    ceiling: REDUCTION_THRESHOLD_2,
+    components: [
+      {
+        label: 'Pension Insurance',
+        rate: 0.215,
+        ceiling: REDUCTION_THRESHOLD_2,
+        pensionFunded: true,
+      },
+      {
+        // Sick leave (nemocenské) — paid to ČSSZ but funds sickness benefits, not pensions
+        label: 'Sick Leave Insurance',
+        rate: 0.021,
+        ceiling: REDUCTION_THRESHOLD_2,
+        pensionFunded: false,
+      },
+      {
+        // Příspěvek na státní politiku zaměstnanosti — labour market / unemployment fund
+        label: 'State Employment Policy',
+        rate: 0.012,
+        ceiling: REDUCTION_THRESHOLD_2,
+        pensionFunded: false,
+      },
+      {
+        label: 'Health Insurance',
+        rate: 0.09,
+        ceiling: undefined,
+        pensionFunded: false,
+        // Zákon č. 592/1992 Sb. § 3 — employer health contributions also rounded up
+        roundUp: true,
+      },
+    ],
+  },
+
+  // ─── Pension System: DB ────────────────────────────────────────────────────
+  // Zákon č. 155/1995 Sb. §§ 15-16; Nařízení vlády 2026
+  //
+  // Formula:
+  //   výpočtový základ (credited assessment base) = reduction of monthly avg earnings
+  //   procentní výměra = credited × careerYears × accrualRate (1.495%/yr)
+  //   pension = základní výměra (4,900) + procentní výměra
+  //
+  // 2026 reform: 1st threshold reduced from 100% to 99% credit rate.
+  // Accrual rate reduced from 1.500% to 1.495% (decreasing 0.005pp/yr until 2035).
+  pensionSystem: {
+    type: 'DB',
+    basePension: 4_900,                      // základní výměra (CZK/month)
+    assessmentBase: 'monthly_avg',           // average of lifetime monthly earnings
+    accrualRatePerYear: 0.01495,             // 1.495% per year of credited earnings
+    ceiling: REDUCTION_THRESHOLD_2,          // 195,868 CZK/month (= 4× AW)
+    reductionThresholds: [
+      { upTo: REDUCTION_THRESHOLD_1, creditRate: 0.99 },  // ≤21,546 @ 99%
+      { upTo: REDUCTION_THRESHOLD_2, creditRate: 0.26 },  // 21,546–195,868 @ 26%
+      { upTo: Infinity, creditRate: 0.00 },               // >195,868 @ 0%
+    ],
+  },
+
+  // ─── Pillar 2 ─────────────────────────────────────────────────────────────
+  // Czech Republic abolished its Pillar 2 ("II. pilíř") in 2016. It has
+  // a voluntary "doplňkové penzijní spoření" (III. pilíř) but that is not mandatory.
+  pillar2: {
+    available: false,
+    mandatory: false,
+    contributionRate: 0,
+    defaultAnnualReturnRate: 0.030, // 3.0% real net-of-fees — constant prices basis; OECD 2–3% convention
+    fundType: 'individual_account',
+  },
+
+  // ─── Formula Steps (for Sidebar) ─────────────────────────────────────────
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'Zákon č. 589/1992 Sb.',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Employee Social Contributions',
+      formula: 'Employee SSC = Pension Insurance (6.5%) + Health Insurance (4.5%) = 11%',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.employeeTotal;
+        return `${v.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/month`;
+      },
+      explanation:
+        'Deducted from your gross before income tax. 6.5% funds your pension; 4.5% funds health insurance.',
+      sourceNote: 'Zákon č. 589/1992 Sb.',
+    },
+    {
+      stepNumber: 3,
+      label: 'Step 3: Income Tax',
+      formula: 'Tax = 15% × min(gross, 4×AW) + 23% × max(0, gross − 4×AW) − personal allowance',
+      liveValueFn: (_inputs, result) => {
+        const v = result.taxResult.incomeTaxMonthly;
+        return `${v.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/month`;
+      },
+      explanation:
+        '15% up to 4× average wage, 23% above. Personal allowance (30,840 CZK/year) reduces the final tax bill.',
+      sourceNote: 'Zákon č. 586/1992 Sb. §§ 16, 35ba',
+    },
+    {
+      stepNumber: 4,
+      label: 'Step 4: Pension Assessment Base (výpočtový základ)',
+      formula:
+        'credited = min(gross, 21,546)×99% + max(0, min(gross, 195,868) − 21,546)×26%',
+      liveValueFn: (inputs, _result) => {
+        const g = inputs.grossMonthly;
+        const t1 = 21_546;
+        const t2 = 195_868;
+        const band1 = Math.min(g, t1) * 0.99;
+        const band2 = Math.max(0, Math.min(g, t2) - t1) * 0.26;
+        const credited = band1 + band2;
+        return `${credited.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/month`;
+      },
+      explanation:
+        'The reduction formula compresses higher earners. Only the first 21,546 CZK is nearly fully credited (99%); amounts up to 195,868 CZK get 26%. Nothing above is credited.',
+      sourceNote: 'Zákon č. 155/1995 Sb. § 15; Nařízení vlády 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 5,
+      label: 'Step 5: Monthly Pension',
+      formula: 'Pension = 4,900 + credited × careerYears × 1.495%',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.monthlyPension;
+        return `${v.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/month`;
+      },
+      explanation:
+        'The base pension (základní výměra) of 4,900 CZK is a flat amount paid to everyone. The percentage component (procentní výměra) adds 1.495% of credited earnings per year worked.',
+      sourceNote: 'Zákon č. 155/1995 Sb. § 16; Nařízení vlády 2026',
+    },
+    {
+      stepNumber: 6,
+      label: 'Step 6: Replacement Rate',
+      formula: 'Replacement rate = Monthly Pension ÷ Gross Salary',
+      liveValueFn: (_inputs, result) => {
+        const rr = result.pensionResult.replacementRate;
+        return `${(rr * 100).toFixed(1)}%`;
+      },
+      explanation:
+        'Percentage of your working salary replaced by the state pension. Higher earners receive a lower replacement rate due to the redistribution built into the reduction formula.',
+      sourceNote: 'OECD Pensions at a Glance 2023',
+    },
+    {
+      stepNumber: 7,
+      label: 'Step 7: Lifetime Value — Contributions vs. Received',
+      formula:
+        'Total Paid = (Pension SSC employee + employer) × 12 × career years\nTotal Received = Pension × 12 × retirement years',
+      liveValueFn: (_inputs, result) => {
+        const paid = result.fairReturn.totalContributionsPaid;
+        const received = result.pensionResult.monthlyPension * 12 * 20;
+        const diff = received - paid;
+        const sign = diff >= 0 ? '+' : '−';
+        return (
+          `Paid: ${(paid / 1e6).toFixed(1)}m CZK | ` +
+          `Received: ${(received / 1e6).toFixed(1)}m CZK | ` +
+          `${sign}${(Math.abs(diff) / 1e6).toFixed(1)}m CZK`
+        );
+      },
+      explanation:
+        'Nominal lifetime comparison (no discounting). Higher earners tend to pay more in but receive a similar pension — a deliberate redistribution effect.',
+      sourceNote: 'Calculated from Zákon č. 155/1995 Sb. + Zákon č. 589/1992 Sb.',
+      isKeyInsight: true,
+    },
+  ],
+
+  // ─── Data Source References ───────────────────────────────────────────────
+  dataSourceRefs: [
+    {
+      parameter: 'averageWage',
+      source: 'MPSV Nařízení vlády (Government Decree) 2026',
+      url: 'https://mpsv.gov.cz/dulezite-parametry',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'pensionSystem.basePension',
+      source: 'MPSV Nařízení vlády 2026 / Zákon č. 155/1995 Sb.',
+      url: 'https://mpsv.gov.cz/dulezite-parametry',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'pensionSystem.reductionThresholds',
+      source: 'MPSV Nařízení vlády 2026 / ČSSZ',
+      url: 'https://www.penize.cz/starobni-duchod/483580',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'pensionSystem.accrualRatePerYear',
+      source: 'Zákon č. 155/1995 Sb. (as amended by důchodová reforma)',
+      url: 'https://mpsv.gov.cz/dulezite-parametry',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'employeeSSC',
+      source: 'Zákon č. 589/1992 Sb.',
+      url: 'https://www.zakonyprolidi.cz/cs/1992-589',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'employerSSC',
+      source: 'Zákon č. 589/1992 Sb.',
+      url: 'https://www.zakonyprolidi.cz/cs/1992-589',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'incomeTax',
+      source: 'Zákon č. 586/1992 Sb. §§ 16, 35ba',
+      url: 'https://www.zakonyprolidi.cz/cs/1992-586',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'eurExchangeRate',
+      source: 'ECB SDMX-REST EXR (daily reference rate)',
+      url: 'https://data-api.ecb.europa.eu/service/data/EXR/M.CZK.EUR.SP00.A',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+  ],
+
+  // Pension formula parameters fully populated for Phase 1
+  incomplete: false,
+
+  // ─── Self-Employment: OSVČ ─────────────────────────────────────────────────
+  // Osoba Samostatně Výdělečně Činná — Czech self-employed persons.
+  // Source: Zákon č. 589/1992 Sb. § 5b (social insurance) + Zákon č. 592/1992 Sb. § 3a (health)
+  //
+  // Key rules:
+  //  • Assessment base (vyměřovací základ) = 50% of net profit (příjmy − výdaje)
+  //  • Social insurance:  29.2% of assessment base
+  //      - Pension insurance:  28.0% (pension-funded)
+  //      - State employment:    1.2% (not pension-funded)
+  //    Minimum monthly assessment base = 25% × AW_2026 = 12,242 CZK
+  //    Maximum monthly assessment base = 195,868 CZK (= 4× AW, same as employee ceiling)
+  //  • Health insurance: 13.5% of assessment base (rouna up to whole CZK)
+  //    Minimum monthly assessment base = 50% × AW_2026 = 24,484 CZK (no upper ceiling)
+  //  • Sick leave insurance: voluntary for OSVČ (excluded from model)
+  //  • Pension formula: uses social assessment base (50% of profit) as effective "earnings"
+  //    rather than raw profit — matching how ČSSZ records the OSVČ pension basis.
+  //  • Income tax: same brackets (15%/23%) and personal allowance as employees.
+  //    Tax base = profit (gross income − expenses), consistent with current taxBase:'gross' config.
+  selfEmployment: {
+    available: true,
+    modes: [
+      {
+        name: 'OSVČ (Hlavní činnost)',
+        pensionBasisRate: 0.5,        // pension assessment base = 50% of profit
+        pillar2Eligible: false,       // CZ has no mandatory Pillar 2
+
+        // ── OSVČ-specific assessment-base rules ──────────────────────────────
+        assessmentBasisRate: 0.5,     // 50% of profit → vyměřovací základ
+
+        // Source: §5b(2) zákon č. 589/1992 Sb. — 25% of monthly AW
+        minSocialInsuranceBase: Math.round(0.25 * AW_2026), // 12,242 CZK/month
+
+        // Source: §3a zákon č. 592/1992 Sb. — 50% of monthly AW
+        minHealthInsuranceBase: Math.round(0.50 * AW_2026), // 24,484 CZK/month
+
+        // ── SSC component structure (all borne by OSVČ, no employer split) ───
+        sscOverrideComponents: [
+          {
+            label: 'Pension Insurance',
+            rate: 0.280,                          // 28.0% of social assessment base
+            baseType: 'social',
+            ceiling: REDUCTION_THRESHOLD_2,       // 195,868 CZK/month (= 4× AW)
+            pensionFunded: true,
+          },
+          {
+            label: 'State Employment Policy',
+            rate: 0.012,                          // 1.2% of social assessment base
+            baseType: 'social',
+            ceiling: REDUCTION_THRESHOLD_2,
+            pensionFunded: false,
+          },
+          {
+            label: 'Health Insurance',
+            rate: 0.135,                          // 13.5% of health assessment base
+            baseType: 'health',
+            ceiling: undefined,                   // health insurance uncapped
+            pensionFunded: false,
+            roundUp: true,                        // §3 zákon č. 592/1992 Sb.
+          },
+        ],
+      },
+
+      // ─── Paušální daň — Pásmo 1 ─────────────────────────────────────────────
+      // Valid for annual gross income ≤ 1,000,000 CZK.
+      // Monthly lump sum: 9,984 CZK = 100 (daň) + 6,578 (soc) + 3,306 (zdrav).
+      // Social base: 22,527 CZK (40% of PD reference AW). Health base: 24,484 CZK (50% AW_2026).
+      // Source: Finanční správa ČR; Zákon č. 7/2021 Sb. §7a–§7h.
+      {
+        name: 'Paušální daň – Pásmo 1',
+        pensionBasisRate: 0.0,      // pension base = minSocialInsuranceBase (via max(0, min))
+        pillar2Eligible: false,
+
+        assessmentBasisRate: 0,     // force SSC onto the fixed band bases (rawBase=0 → min kicks in)
+        minSocialInsuranceBase: PD_BAND1_SOCIAL_BASE, // 22,527 CZK → soc 6,578 CZK/month
+        minHealthInsuranceBase: Math.round(0.50 * AW_2026), // 24,484 CZK → zdrav 3,306 CZK/month
+
+        sscOverrideComponents: [
+          {
+            label: 'Pension Insurance (PD)',
+            rate: 0.280,
+            baseType: 'social',
+            ceiling: REDUCTION_THRESHOLD_2,
+            pensionFunded: true,
+          },
+          {
+            label: 'State Employment Policy (PD)',
+            rate: 0.012,
+            baseType: 'social',
+            ceiling: REDUCTION_THRESHOLD_2,
+            pensionFunded: false,
+          },
+          {
+            label: 'Health Insurance (PD)',
+            rate: 0.135,
+            baseType: 'health',
+            ceiling: undefined,
+            pensionFunded: false,
+            roundUp: true,
+          },
+        ],
+
+        pausalniDan: {
+          bandLabel: 'Pásmo 1',
+          band: 1,
+          annualIncomeLimit: PD_BAND1_LIMIT,
+          fixedMonthlyTaxAdvance: PD_BAND1_TAX_ADVANCE,
+        },
+      },
+
+      // ─── Paušální daň — Pásmo 2 ─────────────────────────────────────────────
+      // Valid for annual gross income ≤ 1,500,000 CZK (or ≤ 2,000,000 with 80%/60% expenses).
+      // Monthly lump sum: 16,745 CZK = 4,963 (daň) + 8,191 (soc) + 3,591 (zdrav).
+      // Social base: 28,050 CZK (29.2% → 8,191 CZK). Health base: 26,600 CZK (13.5% → 3,591 CZK).
+      // Source: Finanční správa ČR; Zákon č. 7/2021 Sb. §7b(3); zákon č. 366/2022 Sb.
+      {
+        name: 'Paušální daň – Pásmo 2',
+        pensionBasisRate: 0.0,      // pension base = minSocialInsuranceBase (Band 2 elevated)
+        pillar2Eligible: false,
+
+        assessmentBasisRate: 0,     // force SSC onto the fixed band bases
+        minSocialInsuranceBase: PD_BAND2_SOCIAL_BASE, // 28,050 CZK → soc 8,191 CZK/month
+        minHealthInsuranceBase: PD_BAND2_HEALTH_BASE, // 26,600 CZK → zdrav 3,591 CZK/month
+
+        sscOverrideComponents: [
+          {
+            label: 'Pension Insurance (PD)',
+            rate: 0.280,
+            baseType: 'social',
+            ceiling: REDUCTION_THRESHOLD_2,
+            pensionFunded: true,
+          },
+          {
+            label: 'State Employment Policy (PD)',
+            rate: 0.012,
+            baseType: 'social',
+            ceiling: REDUCTION_THRESHOLD_2,
+            pensionFunded: false,
+          },
+          {
+            label: 'Health Insurance (PD)',
+            rate: 0.135,
+            baseType: 'health',
+            ceiling: undefined,
+            pensionFunded: false,
+            roundUp: true,
+          },
+        ],
+
+        pausalniDan: {
+          bandLabel: 'Pásmo 2',
+          band: 2,
+          annualIncomeLimit: PD_BAND2_LIMIT,
+          fixedMonthlyTaxAdvance: PD_BAND2_TAX_ADVANCE,
+        },
+      },
+    ],
+  },
+
+  // CZ: state pension (štátní důchod) is fully exempt from income tax.
+  // Source: §4 odst.1 písm.h) zákona č.586/1992 Sb. (zákon o daních z příjmů).
+  pensionTax: {
+    method: 'none',
+    note: '§4(1)(h) ZDP: státní důchod je osvobozen od daně z příjmů fyzických osob',
+  },
+};
