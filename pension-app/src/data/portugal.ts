@@ -67,6 +67,11 @@ export const portugal: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_440,       // EUR/month — Eurostat SES / INE Portugal 2022 adj. to 2026
+  wagePercentiles: {         // EUR/month — Eurostat SES / INE Portugal 2022 adj. to 2026
+    p10: 830, p25: 1_020, p75: 2_000, p90: 2_900,
+  },
+  minimumWage: 1_020,        // EUR/month — DL n.º 108-A/2025 (rem. mínima mensal 2026)
   oecdAverageWage: 1_825, // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): ~EUR 21,900/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

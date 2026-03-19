@@ -35,6 +35,11 @@ export const poland: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026_PLN,
+  medianWage: 5_860,           // PLN/month — GUS SES 2022 adj. to 2026
+  wagePercentiles: {             // PLN/month — GUS SES 2022 adj. to 2026
+    p10: 3_400, p25: 4_200, p75: 7_900, p90: 11_500,
+  },
+  minimumWage: 4_626,            // PLN/month — Rozporządzenie RM (2026 minimalne wynagrodzenie)
   oecdAverageWage: 7_044,  // PLN/month — OECD Taxing Wages 2025, Table I.1 (2024): PLN 84,528/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

@@ -63,6 +63,11 @@ export const lithuania: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_760,        // EUR/month — Eurostat SES / Statistics Lithuania 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / Statistics Lithuania 2022 adj. to 2026
+    p10: 1_000, p25: 1_280, p75: 2_400, p90: 3_400,
+  },
+  minimumWage: 1_038,         // EUR/month — LRV nutarimas 2025 (minimali mėnesinė alga 2026)
   oecdAverageWage: 2_074,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 24,888/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

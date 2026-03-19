@@ -58,6 +58,11 @@ export const luxembourg: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 4_720,        // EUR/month — Eurostat SES / STATEC 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / STATEC 2022 adj. to 2026
+    p10: 2_700, p25: 3_400, p75: 6_200, p90: 8_800,
+  },
+  minimumWage: 2_634,         // EUR/month — Règlement grand-ducal 2026 (salaire social minimum qualifié ÷ 1.2)
   oecdAverageWage: 6_221,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 74,652/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

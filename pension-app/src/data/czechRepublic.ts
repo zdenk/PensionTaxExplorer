@@ -101,6 +101,11 @@ export const czechRepublic: CountryConfig = {
 
   // ─── Wages ────────────────────────────────────────────────────────────────
   averageWage: AW_2026,
+  medianWage: 39_000,         // CZK/month — Eurostat SES / ISPV 2023–2024 adj. to 2026
+  wagePercentiles: {          // CZK/month — ISPV / Eurostat SES 2022 adj. to 2026
+    p10: 19_000, p25: 27_000, p75: 57_000, p90: 82_000,
+  },
+  minimumWage: 20_800,        // CZK/month — NV č. 283/2025 Sb. (2026 decree)
   oecdAverageWage: 41_420,  // CZK/month — OECD Taxing Wages 2025, Table I.1 (2024): CZK 497,040/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

@@ -73,6 +73,11 @@ export const spain: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 2_080,       // EUR/month — Eurostat SES / INE 2022 adj. to 2026
+  wagePercentiles: {         // EUR/month — Eurostat SES / INE España 2022 adj. to 2026
+    p10: 1_100, p25: 1_450, p75: 2_800, p90: 4_000,
+  },
+  minimumWage: 1_184,        // EUR/month — RD 145/2025 (SMI 2026: 1,184 EUR/mes 14 pagas ÷ 12)
   oecdAverageWage: 2_600, // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): ~EUR 31,200/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

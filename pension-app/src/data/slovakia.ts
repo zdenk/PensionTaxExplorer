@@ -35,6 +35,11 @@ export const slovakia: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_185,        // EUR/month — Eurostat SES 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / ŠÚ SR 2022 adj. to 2026
+    p10: 700, p25: 870, p75: 1_580, p90: 2_200,
+  },
+  minimumWage: 816,           // EUR/month — Nariadenie vlády SR č. 300/2025 (2026 minimálna mzda)
   oecdAverageWage: 1_616,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 19,392/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

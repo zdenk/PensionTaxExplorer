@@ -50,6 +50,11 @@ export const netherlands: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 3_360,        // EUR/month — Eurostat SES / CBS 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / CBS NL 2022 adj. to 2026
+    p10: 1_900, p25: 2_500, p75: 4_300, p90: 6_100,
+  },
+  minimumWage: 2_191,         // EUR/month — WML 2026-I (Wet minimumloon per 1 jan 2026)
   oecdAverageWage: 4_477,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 53,724/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

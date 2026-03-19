@@ -73,6 +73,11 @@ export const sweden: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 43_160,         // SEK/month — SCB / Eurostat SES 2022 adj. to 2026
+  wagePercentiles: {            // SEK/month — SCB / Eurostat SES 2022 adj. to 2026
+    p10: 26_000, p25: 32_000, p75: 53_500, p90: 72_000,
+  },
+  minimumWage: 16_000,          // SEK/month — effective collective floor (IF Metall / Kommunal 2026)
   oecdAverageWage: 43_434,  // SEK/month — OECD Taxing Wages 2025, Table I.1 (2024): SEK 521,208/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

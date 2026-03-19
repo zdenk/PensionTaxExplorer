@@ -46,6 +46,11 @@ export const austria: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 2_720,        // EUR/month — Eurostat SES 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES 2022 adj. to 2026
+    p10: 1_600, p25: 2_100, p75: 3_800, p90: 5_200,
+  },
+  minimumWage: 2_124,         // EUR/month — KV-Mindestlohn 2026 (dominant coll. agreement floor €14.55/hr)
   oecdAverageWage: 4_221,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 50,648/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

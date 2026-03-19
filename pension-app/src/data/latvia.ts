@@ -55,6 +55,11 @@ export const latvia: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 1_360,        // EUR/month — Eurostat SES / CSB Latvia 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / CSB Latvia 2022 adj. to 2026
+    p10: 820, p25: 1_020, p75: 1_900, p90: 2_750,
+  },
+  minimumWage: 740,           // EUR/month — MK not. Nr. 786 2025 (minimums darba alga 2026)
   oecdAverageWage: 1_729,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 20,748/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

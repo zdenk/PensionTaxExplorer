@@ -68,6 +68,11 @@ export const hungary: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026_HUF,
+  medianWage: 536_000,          // HUF/month — Eurostat SES / KSH 2022 adj. to 2026
+  wagePercentiles: {              // HUF/month — Eurostat SES / KSH 2022 adj. to 2026
+    p10: 310_000, p25: 390_000, p75: 760_000, p90: 1_080_000,
+  },
+  minimumWage: 440_100,           // HUF/month — 289/2025. (X.21.) Korm. rend. (minimálbér 2026)
   oecdAverageWage: 660_000, // HUF/month — OECD Taxing Wages 2025, Table I.1 (2024): ~HUF 7,920,000/yr ÷ 12
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 

@@ -37,6 +37,11 @@ export const belgium: CountryConfig = {
   dataYear: 2026,
 
   averageWage: AW_2026,
+  medianWage: 3_315,        // EUR/month — Eurostat SES 2022 adj. to 2026
+  wagePercentiles: {          // EUR/month — Eurostat SES / StatBel 2022 adj. to 2026
+    p10: 2_050, p25: 2_580, p75: 4_200, p90: 5_900,
+  },
+  minimumWage: 2_070,         // EUR/month — CCT n°43 / CTB 2026 (nationale minimumloon)
   oecdAverageWage: 4_862,  // EUR/month — OECD Taxing Wages 2025, Table I.1 (2024): EUR 58,344/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 
