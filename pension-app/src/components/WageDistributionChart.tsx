@@ -122,7 +122,6 @@ interface DistPoint {
 const N_POINTS = 300;
 
 function buildDistribution(
-  aw: number,
   mu: number,
   sigma: number,
   selectedWage: number,
@@ -254,7 +253,7 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
   // when the selected wage is low but expands naturally for high earners.
   const xMax = Math.max(selectedWageDisplay * 1.6, aw * 2.2);
 
-  const data = buildDistribution(aw, mu, sigma, selectedWageDisplay, minWage, xMax);
+  const data = buildDistribution(mu, sigma, selectedWageDisplay, minWage, xMax);
 
   const selectedPct = lognormalCDF(selectedWageDisplay, mu, sigma);
   const sym = displaySym;
