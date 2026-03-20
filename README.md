@@ -231,6 +231,54 @@ https://<your-github-username>.github.io/<repo-name>/
 
 ---
 
+## Credited Non-Contributory Periods (not modelled)
+
+Most EU pension systems credit periods during which no contributions are paid — the state or employer either pays contributions on the worker's behalf or assigns notional earnings for that period. **None of these periods are currently modelled by this application**, which assumes a fully continuous career from start age to retirement age.
+
+The table below documents what each country credits in principle, as a reference for interpreting the gap between model output and real-world outcomes.
+
+
+The engine currently uses `careerYears = retirementAge − careerStartAge` as a flat number — none of the non-contributory periods below are modelled. This table documents the real-world rules for each country; a `creditedBonusYears` field per life-event type is planned for a future phase.
+
+
+| Country | University / Study | Military Service | Parental / Child-Rearing | Unemployment | Sickness |
+|---|---|---|---|---|---|
+| 🇩🇪 Germany | Pre-1992: up to 7 semesters (Anrechnungszeit); **post-1992: abolished** | ✅ Wehrdienst/Zivildienst — full credit at avg wage | ✅ **3 years/child** at 100 % avg wage (Kindererziehungszeit) — most generous in EU | ✅ ALG I periods | ✅ |
+| 🇦🇹 Austria | Pre-2005 old system: yes. **Post-2005 Pensionskonto: no** (voluntary buyback available) | ✅ Präsenzdienst | ✅ Up to 4 years/child (at ~⅓ avg contrib base) | ✅ | ✅ |
+| 🇫🇷 France | Not automatic; can be **purchased** (rachat de trimestres) | ✅ | ✅ Maternity quarters + AVPF for stay-at-home parents | ✅ Trimestres assimilés | ✅ |
+| 🇧🇪 Belgium | Not automatic; purchasable | ✅ | ✅ Maternity, time-crédit assimilated | ✅ Full assimilation | ✅ |
+| 🇳🇱 Netherlands | ✅ **AOW is residence-based** (2 %/yr age 15–67) — study years in NL count as residence | ✅ (residence) | ✅ (residence) | ✅ (residence) | ✅ |
+| 🇩🇰 Denmark | ✅ **Folkepension is residence-based** — same as NL | ✅ | ✅ | N/A (residence) | N/A |
+| 🇸🇪 Sweden | ❌ No direct credit | ✅ Short service (small) | ✅ Parental benefit (föräldrapenning) credited | ✅ A-kassa periods | ✅ |
+| 🇫🇮 Finland | ❌ Abolished | ✅ Flat amount | ✅ At 117 % of parental benefit | ✅ 75 % of benefit | ✅ 75 % of benefit |
+| 🇮🇹 Italy | ❌ (NDC — only actual contributions count) | ✅ State pays minimal flat | ✅ Maternity (state credit) | ✅ State integrates | ✅ |
+| 🇪🇸 Spain | ❌ | ✅ Up to 2 years | ✅ Maternity/paternity full credit | ✅ Only if cotizando | ✅ |
+| 🇵🇹 Portugal | ❌ | ✅ | ✅ Maternity/paternity | ✅ Períodos de equivalência | ✅ |
+| 🇬🇷 Greece | ⚠️ Pre-2016: up to 4 years first degree; **post-2016 reform: mostly abolished** | ✅ | ✅ Maternity | ✅ | ✅ |
+| 🇨🇿 Czech Republic | ⚠️ Pre-2010: up to 6 years credited; **post-2010: only with voluntary contributions** | ✅ | ✅ Up to 4 years/child (parental leave) | ✅ Up to 3 years | ✅ |
+| 🇵🇱 Poland | ⚠️ Counted as **non-contributory** (nieskładkowy) — accrues at 0.7 % vs contributory 1.3 %; capped at ⅓ of contributory years | ✅ Credited as contributory | ✅ Maternity/parental | ✅ Non-contributory | ✅ |
+| 🇭🇺 Hungary | ⚠️ Pre-2009: credited; **post-2009 reform: abolished** | ✅ | ✅ GYES/GYED — up to 3 years/child | ✅ | ✅ |
+| 🇸🇰 Slovakia | ⚠️ First degree up to 3 years credited at state expense (post-reform reduced) | ✅ | ✅ Up to 6 years | ✅ | ✅ |
+| 🇸🇮 Slovenia | ⚠️ Up to 6 years first degree — **buyback option** | ✅ | ✅ | ✅ | ✅ |
+| 🇪🇪 Estonia | ❌ | ✅ 12 months | ✅ State pays parental leave contributions | ✅ If benefit drawn | ✅ |
+| 🇱🇻 Latvia | ❌ (NDC — only actual contributions) | ✅ State pays | ✅ State pays | ✅ State pays | ✅ |
+| 🇱🇹 Lithuania | ❌ | ✅ State pays | ✅ State pays | ✅ | ✅ |
+| 🇮🇪 Ireland | ❌ | ✅ | ✅ Up to 20 years home-caring credits | ✅ PRSI credits | ✅ |
+| 🇱🇺 Luxembourg | ⚠️ Up to 6 semesters — **purchasable** (rachat) | ✅ | ✅ 4 years/child | ✅ | ✅ |
+
+
+### Key patterns
+
+
+- **Residence-based systems** (🇳🇱 NL, 🇩🇰 DK): the question is irrelevant — any year you live in the country counts, whether working, studying, or caring.
+- **Germany stands out most**: 3 years per child at full average wage (Kindererziehungszeit) can add 6–9 pension points for a parent of two — the most generous child-rearing credit in the EU.
+- **Study credit is disappearing**: most countries reformed it away post-2000 (CZ, HU, AT, FI, SE). Greece and Austria had significant study credits that were reduced or abolished.
+
+
+> These rules are subject to change and vary significantly in duration, base amount, and eligibility conditions. Sources: MISSOC Comparative Tables, OECD *Pensions at a Glance*, national social security legislation. The Czech Republic entries have been verified in detail; entries for all other countries should be independently confirmed before use.
+
+---
+
 ## License
 
 MIT — see [LICENSE](./LICENSE) for details.
