@@ -2,7 +2,7 @@
 
 An interactive, fully client-side single-page application for exploring and comparing pension outcomes and tax burdens across the **22 EU OECD member states**. No backend required — all country data, tax tables, SSC rates and pension formula parameters are encoded as static TypeScript and computed entirely in the browser. For information and learning purposes only, not to be used for any calculations of personal finance estimations. Made with AI agent.
 
-**Live demo:** https://zdenk.github.io/pension-tax-explorer/
+**Live demo:** https://zdenk.github.io/PensionTaxExplorer/
 
 ---
 
