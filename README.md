@@ -1,8 +1,8 @@
 # EU27 Pension & Tax Burden Explorer
 
-An interactive, fully client-side single-page application for exploring and comparing pension outcomes and tax burdens across the **22 EU OECD member states**. No backend required — all country data, tax tables, SSC rates and pension formula parameters are encoded as static TypeScript and computed entirely in the browser.
+An interactive, fully client-side single-page application for exploring and comparing pension outcomes and tax burdens across the **22 EU OECD member states**. No backend required — all country data, tax tables, SSC rates and pension formula parameters are encoded as static TypeScript and computed entirely in the browser. For information and learning purposes only, not to be used for any calculations of personal finance estimations. Made with AI agent.
 
-**Live demo:** https://&lt;your-github-username&gt;.github.io/pension-tax-explorer/
+**Live demo:** https://zdenk.github.io/pension-tax-explorer/
 
 ---
 
@@ -13,8 +13,12 @@ An interactive, fully client-side single-page application for exploring and comp
 ### Illustrative model — not a personal pension forecast
 All calculations model a stylised, standard employee and should be read as order-of-magnitude illustrations of how different countries' statutory systems compare structurally. Individual outcomes will differ materially based on personal circumstances, actual career history, future legislative changes, and employer arrangements.
 
-### Present values only — no inflation adjustment
-All monetary figures are expressed in **today's (present-value) terms** using current-year wage and parameter data. The model does **not** project future nominal amounts, apply wage growth assumptions, or discount future pension payments back to today using an explicit discount rate. Replacement rates are gross approximations of the statutory formula applied to a static wage level.
+### Present values only — no wage growth and no inflation adjustment
+All monetary figures are expressed in **today's (present-value) terms** using current-year wage and parameter data. The model does **not** project future nominal amounts and makes the following simplifying assumptions:
+
+- **Constant real wage throughout the entire career.** Real wages typically grow 2–3 % per year in the early career and flatten with age; ignoring this understates lifetime pension-eligible earnings.
+- **No post-retirement pension indexation.** PAYG pensions in most countries are indexed annually to wages or prices; the replacement rate shown is the rate *at the point of retirement only* and will diverge from actual purchasing power as retirement progresses.
+- **No explicit discount rate.** Future pension cash flows are not discounted back to a present value, so the "break-even age" metric is a simple nominal payback and not a financially rigorous NPV measure.
 
 ### Tax credits and personal circumstances not modelled
 The income tax calculations implement **basic statutory brackets and standard employee SSC rates only**. The following are explicitly excluded and will produce materially different real-world results in many countries:
@@ -25,15 +29,22 @@ The income tax calculations implement **basic statutory brackets and standard em
 - Housing deductions and mortgage interest relief
 - Voluntary private pension contribution tax relief
 - Any means-tested benefits or top-ups
+- **Regional and municipal income tax variation** (e.g. French communes range from approximately 29 % to 35 % in combined marginal rate; the model uses a population-weighted national average)
+- **13th / 14th month bonuses** (Austria, Germany and others), which are subject to preferential tax treatment; these are flattened into an equivalent constant monthly rate
 
 ### Pension data complexity — not independently verified
-Statutory pension systems across 22 countries involve hundreds of parameters (accrual rates, ceilings, indexation rules, early-retirement penalties, survivor rules, transition provisions, Pillar 2 / Pillar 3 interactions, and more). The parameters encoded in this application have been sourced in good faith from OECD, MISSOC, and national authorities, but **have not been independently audited or verified by a qualified actuary or pension specialist**. Known limitations include:
+Statutory pension systems across 22 countries involve hundreds of parameters (accrual rates, ceilings, indexation rules, early-retirement penalties, survivor rules, transition provisions, Pillar 2 / Pillar 3 interactions, and more). The parameters encoded in this application have been sourced in good faith from OECD, MISSOC, and national authorities, but **have not been independently audited or verified by a qualified actuary or pension specialist**.
+
+> **Czech Republic focus:** This tool was developed primarily with the Czech system in mind. The Czech tax, SSC, and pension parameters have been verified in detail against official sources (MPSV, ČSSZ, MF ČR). Parameters for all other countries are based on OECD and MISSOC data but **have not been cross-checked with the same level of rigour** — treat non-CZ outputs with additional caution and verify key figures against national authorities before drawing conclusions. Known limitations include:
 
 - **Finland (TyEL):** Modelled as a DB system with a longevity adjustment coefficient. This is a simplification; the correct treatment requires a dedicated `TyELConfig` type (flagged as design debt).
-- **NDC annuity divisors:** Life expectancy divisors (Poland, Sweden, Italy, Latvia, Estonia) are taken from published tables but may not reflect the precise cohort-specific figures that will apply at an individual's actual retirement date.
+- **NDC annuity divisors:** Life expectancy divisors (Poland, Sweden, Italy, Latvia, Estonia) are taken from published tables but may not reflect the precise cohort-specific figures that will apply at an individual's actual retirement date. Non-standard retirement ages (e.g. age 62) fall back to the nearest available divisor rather than being interpolated, which can slightly over- or understate the pension.
 - **Transition cohorts:** Most countries have transition rules for workers born before a certain year. This model applies the mature steady-state formula and does not model transition cohort adjustments.
 - **Indexation:** Post-retirement pension indexation (price, wage, or mixed) is not modelled. Replacement rates shown are at the point of retirement only.
 - **Second and third pillar pensions:** Voluntary or quasi-mandatory funded pillars (e.g. Danish ATP/occupational schemes, Dutch sector pension funds, Swedish PPM) are either excluded or only partially captured.
+- **France AGIRC-ARRCO:** The supplementary PAYG points system is modelled as a funded-account equivalent (3 % real return) rather than as the actual PAYG points mechanism. The calibration factors are reverse-engineered to match OECD *Pensions at a Glance* replacement-rate targets, not derived from the official point pricing, and may become stale if OECD revises its methodology.
+- **DB minimum pension floor:** The statutory minimum pension is applied as a flat floor with no proration for career length. Workers with a partial career (e.g. < 40 years) may see a modestly overstated minimum-pension outcome.
+- **Pillar 2 funded annuity horizon:** All funded second-pillar accounts are annuitised over a fixed 20-year horizon. Some occupational schemes use a lifetime annuity (e.g. Netherlands) or a shorter fixed-term payout; the 20-year assumption is a simplification.
 
 ---
 
@@ -174,7 +185,10 @@ pension-app/
 
 ## Data Sources
 
-All parameters are sourced from authoritative, openly licensed datasets. No value is invented or estimated.
+All parameters are sourced from authoritative, openly licensed datasets. The majority of values are taken directly from official publications; however, a small number are projections or calibrations:
+
+- **Projected 2026 values** — some parameters (e.g. German Rentenwert, Durchschnittsentgelt, Polish GUS wage averages) are forward-projected from the latest available official data and will differ from the actuals once published.
+- **Calibrated factors** — supplementary pension parameters for systems such as France AGIRC-ARRCO are calibrated to match OECD *Pensions at a Glance* replacement-rate benchmarks rather than derived from official point-pricing documents.
 
 | Parameter | Source |
 |---|---|
@@ -212,6 +226,8 @@ https://<your-github-username>.github.io/<repo-name>/
 - **Out of scope in this version:** child tax credits, married couple filing, disability allowances, housing deductions, voluntary private pension top-ups.
 - Finland's TyEL system is modelled as DB with a longevity adjustment coefficient — a dedicated `TyELConfig` variant is flagged as design debt.
 - Non-OECD EU members (BG, RO, HR, CY, MT) are deferred to a future Phase 6 data pack.
+- **Model precision:** The validation suite compares outputs against OECD *Pensions at a Glance* benchmarks with a tolerance of ±8–12 percentage points to account for structural differences (OECD uses a career with wage growth; this model uses a constant wage). The tool is designed for **comparative illustration**, not actuarial precision.
+- **Funded Pillar 2 / fair-return returns are deterministic:** All funded account projections assume a constant 3 % real annual return with no volatility, no sequence-of-returns risk, and no management fees. Actual long-term outcomes will differ materially depending on market conditions and the timing of retirement.
 
 ---
 
