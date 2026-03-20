@@ -127,8 +127,8 @@ function buildDistribution(
   sigma: number,
   selectedWage: number,
   xMin: number,
+  xMax: number,
 ): DistPoint[] {
-  const xMax = Math.max(aw * 4.5, selectedWage * 1.3);
   const step = (xMax - xMin) / N_POINTS;
 
   // Peak density (at mode = exp(μ − σ²)) — used for normalisation
@@ -147,6 +147,23 @@ function buildDistribution(
     });
   }
   return points;
+}
+
+// ─── Tick-interval helper ───────────────────────────────────────────────────
+
+/**
+ * Returns a "nice" round interval such that ~targetCount evenly-spaced ticks
+ * span the given range.  Works at any magnitude (EUR hundreds → CZK tens-of-thousands).
+ */
+function niceInterval(range: number, targetCount: number): number {
+  if (range <= 0 || targetCount <= 0) return 1;
+  const raw  = range / targetCount;
+  const mag  = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  if (norm <= 1.5) return mag;
+  if (norm <= 3.5) return 2 * mag;
+  if (norm <= 7.5) return 5 * mag;
+  return 10 * mag;
 }
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
@@ -211,10 +228,9 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
   const fx = currency === 'EUR' && country.currency !== 'EUR' ? 1 / eurExchangeRate : 1;
   const displaySym = currency === 'EUR' && country.currency !== 'EUR' ? '€' : currencySymbol(country.currency);
 
-  const aw          = country.averageWage  * fx;
-  const medianWage  = (country.medianWage  ?? country.averageWage * 0.8) * fx;
-  const minWage     = (country.minimumWage ?? country.averageWage * 0.02) * fx;
-  const p90Display  = (country.wagePercentiles?.p90 ?? country.averageWage * 2) * fx;
+  const aw         = country.averageWage  * fx;
+  const medianWage = (country.medianWage  ?? country.averageWage * 0.8) * fx;
+  const minWage    = (country.minimumWage ?? country.averageWage * 0.02) * fx;
 
   // OLS fitting is done in local currency for numerical stability, then we
   // derive scaled mu (sigma is scale-invariant) for display.
@@ -232,14 +248,18 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
   const mu   = muLocal + Math.log(Math.max(fx, 1e-12));
   const mode = modeLocal * fx;
 
-  const data = buildDistribution(aw, mu, sigma, selectedWageLocal * fx, minWage);
+  const selectedWageDisplay = selectedWageLocal * fx;
+  // Right edge: always show at least 1.6× the selected wage plus enough to
+  // see 2.2× the mean — whichever is larger.  This keeps the chart tight
+  // when the selected wage is low but expands naturally for high earners.
+  const xMax = Math.max(selectedWageDisplay * 1.6, aw * 2.2);
 
-  const selectedPct = lognormalCDF(selectedWageLocal * fx, mu, sigma);
+  const data = buildDistribution(aw, mu, sigma, selectedWageDisplay, minWage, xMax);
+
+  const selectedPct = lognormalCDF(selectedWageDisplay, mu, sigma);
   const sym = displaySym;
 
-  // X-axis: clip right at 1.4 × P90 (or 1.4 × selected if beyond), much tighter than 4.5 × AW
-  const xMax = Math.max(p90Display * 1.4, selectedWageLocal * fx * 1.15);
-  const xTickInterval = Math.ceil(xMax / 5 / 10_000) * 10_000 || Math.ceil(xMax / 5 / 100) * 100;
+  const xTickInterval = niceInterval(xMax - minWage, 5);
   const xTicks: number[] = [];
   for (let v = Math.ceil(minWage / xTickInterval) * xTickInterval; v <= xMax; v += xTickInterval) xTicks.push(v);
 
@@ -266,10 +286,14 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
           : 'Approximate only \u2014 lognormal curve fitted to median \u0026 mean wage; actual distribution varies by country.'}
       </p>
 
-      <ResponsiveContainer width="100%" height={160}>
+      <div className="relative">
+        <span className="absolute top-0 left-0 text-[8px] text-slate-400 leading-none z-10">
+          Min
+        </span>
+        <ResponsiveContainer width="100%" height={160}>
         <ComposedChart
           data={data}
-          margin={{ top: 18, right: 8, bottom: 0, left: 0 }}
+          margin={{ top: 52, right: 8, bottom: 0, left: 0 }}
         >
           {/* dBelow — sky blue fill (below selected wage) */}
           <Area
@@ -316,20 +340,13 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
           <ReferenceLine y={0} stroke="#334155" strokeWidth={1} />
 
           {/* ─── Minimum wage ─────────────────────────────────────────────── */}
+          {/* Label is rendered as an absolute overlay at top-left; only the line remains here */}
           <ReferenceLine
             x={minWage}
             stroke="#94a3b8"
             strokeDasharray="2 2"
             strokeWidth={1.5}
-          >
-            <Label
-              value={`Min\n${fmtWageShort(minWage)}${sym}`}
-              position="insideTopLeft"
-              fontSize={8}
-              fill="#94a3b8"
-              offset={3}
-            />
-          </ReferenceLine>
+          />
 
           {/* ─── Mode ─────────────────────────────────────────────────────── */}
           <ReferenceLine
@@ -339,11 +356,11 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
             strokeWidth={1.5}
           >
             <Label
-              value={`Mode\n${fmtWageShort(mode)}${sym}`}
-              position="insideTopLeft"
+              value="Mode"
+              position="top"
+              dy={-24}
               fontSize={8}
               fill="#facc15"
-              offset={3}
             />
           </ReferenceLine>
 
@@ -355,11 +372,11 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
             strokeWidth={1.5}
           >
             <Label
-              value={`Median\n${fmtWageShort(medianWage)}${sym}`}
-              position="insideTopLeft"
+              value="Median"
+              position="top"
+              dy={-12}
               fontSize={8}
               fill="#34d399"
-              offset={3}
             />
           </ReferenceLine>
 
@@ -371,23 +388,24 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
             strokeWidth={1.5}
           >
             <Label
-              value={`Mean\n${fmtWageShort(aw)}${sym}`}
-              position="insideTopLeft"
+              value="Mean"
+              position="top"
+              dy={0}
               fontSize={8}
               fill="#fb923c"
-              offset={3}
             />
           </ReferenceLine>
 
           {/* ─── Selected wage ────────────────────────────────────────────── */}
           <ReferenceLine
-            x={selectedWageLocal}
+            x={selectedWageDisplay}
             stroke="#38bdf8"
             strokeWidth={2}
           >
             <Label
-              value={`You\n${fmtWageShort(selectedWageLocal)}${sym}`}
+              value={`You · ${fmtWageShort(selectedWageDisplay)}${sym}`}
               position="top"
+              dy={-18}
               fontSize={8.5}
               fill="#38bdf8"
               fontWeight="bold"
@@ -402,6 +420,7 @@ export function WageDistributionChart({ country, selectedWageLocal, currency, eu
           />
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
 
       {/* Legend strip */}
       <div className="flex gap-3 text-[10px] text-slate-500 mt-1 pl-1">
