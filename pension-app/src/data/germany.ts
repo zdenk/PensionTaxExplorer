@@ -56,21 +56,22 @@ export const germany: CountryConfig = {
   },
 
   // Simplified 4-bracket approximation of the German continuous formula (EStG § 32a 2026)
-  // Grundfreibetrag 2026: 12,096 EUR/year = 1,008 EUR/month
+  // Grundfreibetrag 2026: 12,348 EUR/year = 1,029 EUR/month (Steuerfortentwicklungsgesetz 2025)
   // Zone 1 (Eingangssteuersatz progression): 14%–24% → average ~19%
   // Zone 2 (linear progression): 24%–42%  → approximate at 32%
-  // Zone 3: 42% flat; Zone 4: 45% (Reichensteuer)
+  // Zone 3: 42% flat from 69,879 EUR/year = 5,823 EUR/month (EStG §32a 2026)
+  // Zone 4: 45% Reichensteuer from 277,826 EUR/year = 23,152 EUR/month (frozen since 2022; EStG §32a Abs.5)
   // Note: solidarity surcharge (Soli) abolished for 90%+ of earners from 2021.
   incomeTax: {
     type: 'progressive',
     personalAllowance: 0, // Grundfreibetrag modelled as 0%-rate first bracket
     taxBase: 'gross',
     brackets: [
-      { upTo: 1_008,  rate: 0.00 }, // Grundfreibetrag zone
-      { upTo: 2_175,  rate: 0.19 }, // lower progression zone (approx 14–24%)
-      { upTo: 5_520,  rate: 0.32 }, // upper progression zone (approx 24–42%)
-      { upTo: 48_167, rate: 0.42 }, // proportional zone
-      { upTo: Infinity, rate: 0.45 }, // Reichensteuer
+      { upTo: 1_029,  rate: 0.00 }, // Grundfreibetrag 2026: 12,348 EUR/year
+      { upTo: 2_294,  rate: 0.19 }, // lower progression zone (approx 14–24%)
+      { upTo: 5_823,  rate: 0.32 }, // upper progression zone (approx 24–42%); Spitzensteuersatz from 69,879 EUR/yr
+      { upTo: 23_152, rate: 0.42 }, // proportional zone 42%; ceiling = Reichensteuer threshold 277,826 EUR/yr
+      { upTo: Infinity, rate: 0.45 }, // Reichensteuer 45% (EStG §32a Abs.5, frozen at 277,826 EUR/yr)
     ],
   },
 
