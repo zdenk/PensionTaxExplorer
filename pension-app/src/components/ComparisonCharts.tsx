@@ -341,9 +341,15 @@ function PensionOutputChart({ entries }: { entries: CountryScenario[] }) {
 // ─── C. Pension Accumulation ──────────────────────────────────────────────────
 
 function AccumulationChart({ entries }: { entries: CountryScenario[] }) {
-  // Build unified age axis from all timelines
+  // Age axis: zero-anchor at each country's career start + all snapshot ages shifted by +1.
+  // Shifting by +1 means each snapshot at age X (= activity during year X) is displayed at
+  // end-of-year X+1, so the final career year peaks exactly AT retirementAge on the x-axis
+  // and the pension-received line starts from zero at that same age.
   const allAges = Array.from(
-    new Set(entries.flatMap(({ result }) => result.timeline.map((s) => s.age))),
+    new Set(entries.flatMap(({ result }) => [
+      result.timeline[0]?.age ?? 25,            // zero-anchor at career start
+      ...result.timeline.map((s) => s.age + 1), // end-of-year display positions
+    ])),
   ).sort((a, b) => a - b);
 
   // For each age build one flat row: { age, CZ_contributions, CZ_compounded, CZ_received, … }
@@ -351,7 +357,8 @@ function AccumulationChart({ entries }: { entries: CountryScenario[] }) {
     const row: Record<string, number | null> = { age };
     entries.forEach(({ code, country, result }) => {
       const fx = country.eurExchangeRate;
-      const snap = result.timeline.find((s) => s.age === age);
+      // Each snapshot at age X is shown at X+1, so look for the snap at age-1
+      const snap = result.timeline.find((s) => s.age === age - 1);
 
       const totalPaidAtRetirement =
         result.timeline.find((s) => s.phase === 'retirement')
@@ -359,22 +366,23 @@ function AccumulationChart({ entries }: { entries: CountryScenario[] }) {
       const compoundedPeak =
         [...result.timeline].reverse().find((s) => s.phase === 'career')
           ?.cumulativeContributionsCompounded ?? result.fairReturn.accumulatedPot;
+      const firstRetireAge = result.timeline.find((s) => s.phase === 'retirement')?.age;
+      const careerStartAge = result.timeline[0]?.age ?? 25;
 
-      if (snap) {
-        row[`${code}_contributions`] =
-          snap.phase === 'career'
-            ? toEur(snap.cumulativePensionContributions ?? 0, fx)
-            : toEur(totalPaidAtRetirement, fx);
-
-        row[`${code}_compounded`] =
-          snap.phase === 'career'
-            ? toEur(snap.cumulativeContributionsCompounded ?? 0, fx)
-            : toEur(compoundedPeak, fx);
-
-        row[`${code}_received`] =
-          snap.phase === 'retirement'
-            ? toEur(snap.cumulativePensionReceived ?? 0, fx)
-            : null;
+      if (age === careerStartAge) {
+        // Zero-anchor: contributions and compounded start from 0, received not yet active
+        row[`${code}_contributions`] = 0;
+        row[`${code}_compounded`]    = 0;
+        row[`${code}_received`]      = null;
+      } else if (snap?.phase === 'career') {
+        row[`${code}_contributions`] = toEur(snap.cumulativePensionContributions ?? 0, fx);
+        row[`${code}_compounded`]    = toEur(snap.cumulativeContributionsCompounded ?? 0, fx);
+        // At retirementAge the last career year peaks here; anchor the received line at 0
+        row[`${code}_received`] = age === firstRetireAge ? 0 : null;
+      } else if (snap?.phase === 'retirement') {
+        row[`${code}_contributions`] = toEur(totalPaidAtRetirement, fx);
+        row[`${code}_compounded`]    = toEur(compoundedPeak, fx);
+        row[`${code}_received`]      = toEur(snap.cumulativePensionReceived ?? 0, fx);
       } else {
         row[`${code}_contributions`] = null;
         row[`${code}_compounded`]    = null;
