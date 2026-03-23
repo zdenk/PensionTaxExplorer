@@ -142,7 +142,33 @@ export const ireland: CountryConfig = {
   },
 
   incomplete: false,
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('en-IE', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'PRSI Class A 11.05%',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: State Pension Contributory (Flat-rate)',
+      formula: 'Pension = Max Personal Rate',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.monthlyPension;
+        return `${v.toLocaleString('en-IE', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'A flat-rate pension (~1,254 EUR/month in 2026) paid to anyone with a full PRSI contribution record, regardless of their previous earnings.',
+      sourceNote: 'gov.ie Budget 2026',
+    },
+  ],
 
   dataSourceRefs: [
     {

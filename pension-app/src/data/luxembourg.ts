@@ -163,7 +163,33 @@ export const luxembourg: CountryConfig = {
   },
 
   incomplete: false,
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('fr-LU', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'CNAP / CNS 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Monthly Pension Points',
+      formula: 'Pension = Total Points × Point Value',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.monthlyPension;
+        return `${v.toLocaleString('fr-LU', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Luxembourg has a points-based system with very high replacement rates. At retirement, your accumulated points are multiplied by the point value (~130.7 EUR in 2026).',
+      sourceNote: 'CNAP 2026 / OECD PaG 2023',
+    },
+  ],
 
   dataSourceRefs: [
     {
