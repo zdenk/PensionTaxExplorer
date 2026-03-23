@@ -152,7 +152,37 @@ export const italy: CountryConfig = {
   },
 
   incomplete: false,
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('it-IT', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'Circolare INPS 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Annual NDC Contribution',
+      formula: 'NDC = Gross × 33%',
+      liveValueFn: (inputs, result) => {
+        const ceiling = result.pensionResult.formulaInputs['ceiling'];
+        const rate = result.pensionResult.formulaInputs['pillar1ContributionRate'];
+        const income = Math.min(inputs.grossMonthly, ceiling);
+        const contrib = income * 12 * rate;
+        return `${contrib.toLocaleString('it-IT', { maximumFractionDigits: 0 })} EUR/year`;
+      },
+      explanation:
+        '33% of your gross salary (employee 9.19% + employer 23.81%) is credited to your notional account (montante contributivo).',
+      sourceNote: 'L. 335/1995 Dini',
+      isKeyInsight: true,
+    },
+  ],
 
   dataSourceRefs: [
     {

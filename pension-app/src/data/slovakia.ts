@@ -149,7 +149,46 @@ export const slovakia: CountryConfig = {
 
   incomplete: false,
 
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('sk-SK', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'Zákon č. 461/2003 Z.z.',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Annual POMB Points',
+      formula: 'POMB = (Gross / Reference AW) with Solidarity Haircut',
+      liveValueFn: (_inputs, result) => {
+        const points = result.pensionResult.formulaInputs['annualPoints'];
+        return `${points.toFixed(4)} POMB/year`;
+      },
+      explanation:
+        'Points are earned based on your salary relative to the national average. A "solidarity haircut" reduces points for earnings above 1.25× average wage.',
+      sourceNote: 'Zákon č. 461/2003 Z.z. § 40',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 3,
+      label: 'Step 3: Pillar 1 Monthly Pension',
+      formula: 'Pension = Total POMB × Dôchodková hodnota',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.pillar1Monthly;
+        return `${v.toLocaleString('sk-SK', { maximumFractionDigits: 2 })} EUR/month`;
+      },
+      explanation:
+        'Your lifetime points are multiplied by the "current pension value" (19.76 EUR in 2026).',
+      sourceNote: 'Sociálna poisťovňa 2026 decree',
+    },
+  ],
   dataSourceRefs: [
     {
       parameter: 'averageWage',

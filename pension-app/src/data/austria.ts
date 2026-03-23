@@ -138,7 +138,48 @@ export const austria: CountryConfig = {
 
   incomplete: false,
 
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('de-AT', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'ASVG / SVRV 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Annual Credit (Kontogutschrift)',
+      formula: 'Credit = min(Annual Gross, HBG) × 1.78%',
+      liveValueFn: (inputs, result) => {
+        const annualGross = inputs.grossMonthly * 14;
+        const hbg_annual = result.pensionResult.formulaInputs['ceiling'] * 14;
+        const credit = Math.min(annualGross, hbg_annual) * 0.0178;
+        return `${credit.toLocaleString('de-AT', { maximumFractionDigits: 0 })} EUR/year`;
+      },
+      explanation:
+        'Every year, 1.78% of your annual gross earnings (up to the ceiling) is added to your personal "Pensionskonto".',
+      sourceNote: 'ASVG §§ 14-15',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 3,
+      label: 'Step 3: Monthly Pension (14 installments)',
+      formula: 'Monthly = Account / Teilungsziffer',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.monthlyPension * (14 / 12);
+        return `${v.toLocaleString('de-AT', { maximumFractionDigits: 0 })} EUR (14x / yr)`;
+      },
+      explanation:
+        'The accumulated account balance is divided by a life-expectancy factor (Teilungsziffer, ~12 at age 65) to determine your annual pension, paid in 14 monthly installments.',
+      sourceNote: 'ASVG SVÄG 2003',
+    },
+  ],
   dataSourceRefs: [
     {
       parameter: 'averageWage',
