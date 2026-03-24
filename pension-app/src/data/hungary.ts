@@ -202,6 +202,28 @@ export const hungary: CountryConfig = {
       retrievedDate: '2026-01',
       dataYear: 2026,
     },
+    // ── Cross-cutting source references ──────────────────────
+    {
+      parameter: 'medianWage + wagePercentiles',
+      source: 'Eurostat Structure of Earnings Survey (earn_ses_monthly) 2022, adjusted to 2026',
+      url: 'https://ec.europa.eu/eurostat/web/labour-market/earnings/database',
+      retrievedDate: '2026-01',
+      dataYear: 2022,
+    },
+    {
+      parameter: 'oecdAverageWage',
+      source: 'OECD Taxing Wages 2025, Table I.1 (data year 2024)',
+      url: 'https://stats.oecd.org/Index.aspx?DataSetCode=AV_AN_WAGE',
+      retrievedDate: '2025-11',
+      dataYear: 2024,
+    },
+    {
+      parameter: 'minimumWage',
+      source: 'Eurostat minimum wage statistics (earn_mw_cur) + Kormányrendelet 2026 (minimálbér decree)',
+      url: 'https://ec.europa.eu/eurostat/statistics-explained/index.php/Minimum_wage_statistics',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
   ],
 
   selfEmployment: null,

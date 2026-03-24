@@ -34,6 +34,8 @@ app/
 *.xlsx
 *.xls
 *.pdf
+# …but the EUROMOD policy parameters Excel is used by diff scripts — keep it
+!EUROMOD/Documentation/EUROMOD policy parameters J2.0+.xlsx
 
 # Editor
 .vscode/*
@@ -49,3 +51,9 @@ app/
 .env
 .env.local
 .env.*.local
+
+# EUROMOD model — ignore everything except the policy parameters Excel (used by diff scripts)
+EUROMOD/*
+!EUROMOD/Documentation/
+EUROMOD/Documentation/*
+!EUROMOD/Documentation/EUROMOD policy parameters J2.0+.xlsx
