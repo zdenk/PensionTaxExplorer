@@ -2,7 +2,14 @@
  * App state — useReducer actions and initial state
  */
 
-import type { AppState, WageMode, CareerDefaults } from '../types';
+import type { AppState, WageMode, CareerDefaults, CZBenefitSelections } from '../types';
+
+/** Default CZ benefit selections: all disabled, amounts set to country defaults. */
+const DEFAULT_CZ_BENEFITS: CZBenefitSelections = {
+  fringe_benefit: { enabled: false, amountMonthly: 2_000 },
+  meal_voucher:   { enabled: false, amountMonthly: 2_600 },
+  pension_contrib:{ enabled: false, amountMonthly: 1_000 },
+};
 
 export type AppAction =
   | { type: 'SET_COUNTRIES'; codes: string[] }
@@ -23,7 +30,14 @@ export type AppAction =
    * - If not active, it is added only if total card count across all countries < MAX_CARDS.
    * modeName = null means standard employee mode.
    */
-  | { type: 'SET_SELF_EMPLOYMENT_MODE'; countryCode: string; modeName: string | null };
+  | { type: 'SET_SELF_EMPLOYMENT_MODE'; countryCode: string; modeName: string | null }
+  /**
+   * Toggle or update a single CZ employer benefit.
+   * id       — 'fringe_benefit' | 'meal_voucher' | 'pension_contrib'
+   * enabled  — if provided, sets toggle; if omitted, unchanged
+   * amount   — if provided, updates monthly amount; if omitted, unchanged
+   */
+  | { type: 'SET_CZ_BENEFIT'; id: keyof CZBenefitSelections; enabled?: boolean; amount?: number };
 
 /** Maximum simultaneous (country × mode) card columns. */
 export const MAX_CARDS = 3;
@@ -46,6 +60,7 @@ export const INITIAL_STATE: AppState = {
   activeFormulaSidebarCountry: 'CZ',
   sidebarOpen: false,
   selfEmploymentModes: {},        // all countries start in standard employee mode
+  czBenefits: DEFAULT_CZ_BENEFITS,
 };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -143,6 +158,20 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           },
         };
       }
+    }
+
+    case 'SET_CZ_BENEFIT': {
+      const prev = state.czBenefits[action.id];
+      return {
+        ...state,
+        czBenefits: {
+          ...state.czBenefits,
+          [action.id]: {
+            enabled:       action.enabled  !== undefined ? action.enabled  : prev.enabled,
+            amountMonthly: action.amount   !== undefined ? action.amount   : prev.amountMonthly,
+          },
+        },
+      };
     }
 
     default:

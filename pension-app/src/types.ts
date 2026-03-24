@@ -277,6 +277,18 @@ export interface YearlySnapshot {
   netCumulativePensionReceived?: number;
   cumulativePensionContributionsAtRetirement?: number;
   breakEvenReached?: boolean;
+
+  // ── CZ employer benefits ────────────────────────────────────────────────
+  /** Monthly fringe + meal benefit flowing to effective net pay (CZ only) */
+  czNetBenefitMonthly?: number;
+  /** Monthly employer pension/DPS contribution (CZ only, locked 3rd pillar) */
+  czDpsMonthly?: number;
+  /** Total monthly employer outlay incl. benefits (gross + ER SSC + all benefits) */
+  totalEmployerCostWithBenefits?: number;
+  /** Running DPS accumulated pot at end of this career year (real terms) */
+  cumulativeDpsCompounded?: number;
+  /** DPS monthly pension drawn in retirement (flat; set for retirement snapshots only) */
+  czDpsMonthlyPension?: number;
 }
 
 export interface FairReturnResult {
@@ -297,6 +309,8 @@ export interface ScenarioResult {
   pensionResult: PensionResult;
   timeline: YearlySnapshot[];
   fairReturn: FairReturnResult;
+  /** Populated only for CZ when employer benefits are enabled. */
+  czBenefitResult?: CZBenefitResult;
 }
 
 // ─── Formula Sidebar ─────────────────────────────────────────────────────────
@@ -394,6 +408,82 @@ export interface SelfEmploymentConfig {
   modes: SelfEmploymentMode[];
 }
 
+// ─── Employer Benefits (CZ-specific, extensible) ───────────────────────────
+
+/**
+ * A single employer benefit / compensation component that carries tax or SSC
+ * exemptions compared to equivalent cash salary.
+ * Currently implemented for CZ; the structure can be adopted by other countries.
+ */
+export interface EmployerBenefitDef {
+  /** Stable machine identifier — referenced in AppState and computeScenario. */
+  id: 'fringe_benefit' | 'meal_voucher' | 'pension_contrib';
+  /** English display label shown in the UI */
+  label: string;
+  /** Local-language label (Czech) */
+  labelLocal: string;
+  /**
+   * Where the benefit flows:
+   *  'net_pay'      — added directly to the employee's take-home cash equivalent
+   *                   (non-monetary benefits, meal allowance).
+   *  'third_pillar' — locked until retirement; accumulated at the pillar-2 real
+   *                   return rate and annuitised over the retirement duration.
+   */
+  destination: 'net_pay' | 'third_pillar';
+  defaultEnabled: boolean;
+  defaultAmountMonthly: number;  // CZK/month
+  minAmount: number;             // slider min
+  maxAmount: number;             // slider max
+  stepAmount: number;            // slider step
+  /**
+   * Annual legal exemption cap (local currency).
+   * Amounts above this cap would be treated as taxable income.
+   * The model assumes users stay within the cap.
+   */
+  annualExemptCap?: number;
+  /** Primary legal citation */
+  legalBasis: string;
+  /** Human-readable source note shown in the UI */
+  sourceNote: string;
+  sourceUrl: string;
+}
+
+export interface EmployerBenefitsConfig {
+  available: boolean;
+  benefits: EmployerBenefitDef[];
+}
+
+/**
+ * User-controlled toggles + amounts for CZ employer benefits.
+ * Stored in AppState; passed into computeScenario.
+ */
+export interface CZBenefitSelections {
+  fringe_benefit: { enabled: boolean; amountMonthly: number };
+  meal_voucher:   { enabled: boolean; amountMonthly: number };
+  pension_contrib:{ enabled: boolean; amountMonthly: number };
+}
+
+/**
+ * Computed output of the CZ employer benefit calculation.
+ * Attached to ScenarioResult.czBenefitResult when benefits are active.
+ */
+export interface CZBenefitResult {
+  /** Monthly fringe benefit flowing to effective net pay (0 if disabled) */
+  fringeBenefitMonthly: number;
+  /** Monthly meal allowance flowing to effective net pay (0 if disabled) */
+  mealVoucherMonthly: number;
+  /** Monthly employer pension/life insurance contribution (0 if disabled) */
+  pensionContribMonthly: number;
+  /** Total flowing into net-pay equivalent (fringe + meal) */
+  totalNetAdd: number;
+  /** DPS accumulated pot at retirement, real terms (pension_contrib only) */
+  dpsPotAtRetirement: number;
+  /** Monthly DPS annuity at retirement (annuitised over retirementDuration) */
+  dpsMonthlyPension: number;
+  /** Real annual return rate used for DPS accumulation (mirrors Pillar-2 rate) */
+  dpsReturnRate: number;
+}
+
 // ─── Master Country Config ─────────────────────────────────────────────────
 
 export interface CountryConfig {
@@ -476,6 +566,14 @@ export interface CountryConfig {
 
   // Self-employment stub
   selfEmployment?: SelfEmploymentConfig | null;
+
+  /**
+   * Optional employer benefit / fringe-benefit configuration.
+   * Currently only implemented for Czech Republic.
+   * When present and `available: true`, CountryCard renders a benefit-selection
+   * panel and computeScenario processes the active benefit amounts.
+   */
+  employerBenefits?: EmployerBenefitsConfig;
 }
 
 // ─── Wage Mode ───────────────────────────────────────────────────────────────
@@ -501,6 +599,11 @@ export interface ResolvedWage {
 export interface AppState {
   selectedCountries: string[];
   wageMode: WageMode;
+  /**
+   * CZ Employer benefit selections: toggle + amount per benefit category.
+   * Only consulted when the active card is Czech Republic.
+   */
+  czBenefits: CZBenefitSelections;
   /**
    * Maps country code → array of active mode names (or null = standard employee).
    * Each entry in the array produces a separate card column.

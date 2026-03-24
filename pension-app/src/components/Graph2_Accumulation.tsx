@@ -5,6 +5,7 @@
  *   Retirement: cumulative pension received climbs toward break-even line
  */
 
+import { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -19,6 +20,18 @@ import {
   Cell,
 } from 'recharts';
 import type { ScenarioResult } from '../types';
+
+// ─── Visibility groups ────────────────────────────────────────────────────────
+type LineGroup = 'accumulation' | 'taxes' | 'takeHome' | 'benefits' | 'statePension' | 'combined';
+
+const LINE_GROUPS: { id: LineGroup; label: string; color: string }[] = [
+  { id: 'accumulation', label: 'Accumulation',   color: '#a78bfa' },
+  { id: 'taxes',        label: 'Taxes',          color: '#f87171' },
+  { id: 'takeHome',     label: 'Take-Home',      color: '#22c55e' },
+  { id: 'benefits',     label: 'Take-Home + Benefits', color: '#86efac' },
+  { id: 'statePension', label: 'State pension',  color: '#4ade80' },
+  { id: 'combined',     label: 'State + DPS',    color: '#38bdf8' },
+];
 
 interface Props {
   result: ScenarioResult;
@@ -72,11 +85,24 @@ export function Graph2_Accumulation({
   eurExchangeRate,
   retirementAge,
 }: Props) {
+  const [visible, setVisible] = useState<Set<LineGroup>>(
+    new Set<LineGroup>(['accumulation', 'taxes', 'takeHome', 'benefits', 'statePension', 'combined'])
+  );
+  const show = (g: LineGroup) => visible.has(g);
+  const toggle = (g: LineGroup) =>
+    setVisible(prev => {
+      const next = new Set(prev);
+      next.has(g) ? next.delete(g) : next.add(g);
+      return next;
+    });
   const { timeline, fairReturn, sscResult } = result;
   const fx = currency === 'EUR' ? eurExchangeRate : 1;
   const sym = currency === 'EUR' ? '€' : '';
   const sfx = currency === 'EUR' ? '' : ` ${countryCurrency}`;
   const fmt = (n: number) => `${sym}${Math.round(n).toLocaleString()}${sfx}`;
+
+  // Net state pension (after pension income tax if any)
+  const netMonthlyStatePension = result.pensionResult.netMonthlyPension ?? result.pensionResult.monthlyPension;
 
   // Total nominal contributions at retirement (flat reference for retirement phase)
   const totalPaidIn =
@@ -113,9 +139,20 @@ export function Graph2_Accumulation({
     compounded: number;
     incomeTax: number;
     netTakeHome: number;
+    /** Cumulative net take-home including fringe/meal benefits (light green) */
+    netTakeHomeWithBenefits: number | null;
     received: number | null;
     netReceived: number | null;
     netTakeHomePlusPension: number | null;
+    dpsCompounded: number | null;
+    /** Cumulative (net state pension + DPS annuity) — retirement only, zero-anchored */
+    netTotalReceived: number | null;
+    /** Career net take-home baseline + netTotalReceived — dotted, retirement only */
+    netTakeHomePlusTotalPension: number | null;
+    /** Benefits baseline + net state pension — dotted, retirement only */
+    netBenefitsPlusPension: number | null;
+    /** Benefits baseline + state + DPS — dotted, retirement only */
+    netBenefitsPlusTotalPension: number | null;
   };
 
   const ageMap = new Map<number, ChartPoint>();
@@ -127,40 +164,83 @@ export function Graph2_Accumulation({
     if (p.compounded    > ex.compounded)    ex.compounded    = p.compounded;
     if (p.incomeTax     > ex.incomeTax)     ex.incomeTax     = p.incomeTax;
     if (p.netTakeHome   > ex.netTakeHome)   ex.netTakeHome   = p.netTakeHome;
+    if (p.netTakeHomeWithBenefits !== null && (ex.netTakeHomeWithBenefits === null || p.netTakeHomeWithBenefits > ex.netTakeHomeWithBenefits))
+      ex.netTakeHomeWithBenefits = p.netTakeHomeWithBenefits;
     if (p.received    !== null) ex.received    = p.received;
     if (p.netReceived !== null) ex.netReceived = p.netReceived;
     if (p.netTakeHomePlusPension !== null) ex.netTakeHomePlusPension = p.netTakeHomePlusPension;
+    if (p.dpsCompounded !== null && (ex.dpsCompounded === null || p.dpsCompounded > ex.dpsCompounded))
+      ex.dpsCompounded = p.dpsCompounded;
+    if (p.netTotalReceived !== null) ex.netTotalReceived = p.netTotalReceived;
+    if (p.netTakeHomePlusTotalPension !== null) ex.netTakeHomePlusTotalPension = p.netTakeHomePlusTotalPension;
+    if (p.netBenefitsPlusPension !== null) ex.netBenefitsPlusPension = p.netBenefitsPlusPension;
+    if (p.netBenefitsPlusTotalPension !== null) ex.netBenefitsPlusTotalPension = p.netBenefitsPlusTotalPension;
   };
 
+  // CZ DPS / benefit data — must be declared before the zero-anchor setOrMerge call
+  const czBr = result.czBenefitResult;
+  const hasDps = (czBr?.pensionContribMonthly ?? 0) > 0;
+  // Monthly net-pay benefits (fringe + meal) — flows directly into take-home
+  const czNetBenefitMonthly = (czBr?.totalNetAdd ?? 0) / fx;
+  const hasBenefitNetAdd = !isOSVC && czNetBenefitMonthly > 0;
+  // Total cumulative benefit added over the full career
+  const totalNetTakeHomeWithBenefits = totalNetTakeHome / fx + czNetBenefitMonthly * 12 * careerYears;
+  // Peak DPS pot at retirement (from last career snapshot)
+  const dpsPotPeak = (czBr?.dpsPotAtRetirement ?? 0) / fx;
+  const dpsMonthlyPension = (czBr?.dpsMonthlyPension ?? 0) / fx;
+
   // Zero-anchor at career start
-  setOrMerge({ age: careerStartAge, contributions: 0, compounded: 0, incomeTax: 0, netTakeHome: 0, received: null, netReceived: null, netTakeHomePlusPension: null });
+  setOrMerge({ age: careerStartAge, contributions: 0, compounded: 0, incomeTax: 0, netTakeHome: 0, netTakeHomeWithBenefits: hasBenefitNetAdd ? 0 : null, received: null, netReceived: null, netTakeHomePlusPension: null, dpsCompounded: null, netTotalReceived: null, netTakeHomePlusTotalPension: null, netBenefitsPlusPension: null, netBenefitsPlusTotalPension: null });
 
   for (const snap of timeline) {
     if (snap.phase === 'career') {
       // Shift display age by +1 so the last working year appears at retirementAge
+      // yearsCompleted = how many years of benefits accrued at this display point
+      const yearsCompleted = snap.age - careerStartAge + 1;
+      const cumulBenefitHere = hasBenefitNetAdd ? czNetBenefitMonthly * 12 * yearsCompleted : null;
       setOrMerge({
         age: snap.age + 1,
         contributions: (snap.cumulativePensionContributions ?? 0) / fx,
         compounded:    (snap.cumulativeContributionsCompounded ?? 0) / fx,
         incomeTax:     (snap.cumulativeIncomeTax ?? 0) / fx,
         netTakeHome:   (snap.cumulativeNetTakeHome ?? 0) / fx,
+        netTakeHomeWithBenefits: hasBenefitNetAdd
+          ? (snap.cumulativeNetTakeHome ?? 0) / fx + (cumulBenefitHere ?? 0)
+          : null,
         received:      null,
         netReceived:   null,
         netTakeHomePlusPension: null,
+        dpsCompounded: hasDps ? (snap.cumulativeDpsCompounded ?? 0) / fx : null,
+        netTotalReceived: null,
+        netTakeHomePlusTotalPension: null,
+        netBenefitsPlusPension: null,
+        netBenefitsPlusTotalPension: null,
       });
     } else {
       // Shift by +1 as well: snapshot at age X (= pension received during year X)
       // is displayed at X+1. This means the first retirement year shows at retirementAge+1.
       const netPensionSoFar = (snap.netCumulativePensionReceived ?? 0) / fx;
+      // Years of retirement completed by end of this snapshot year (1-based)
+      const yearsRetired = snap.age - retirementAge + 1;
+      const dpsCumulative = hasDps ? (dpsMonthlyPension * 12 * yearsRetired) : 0;
+      const netTotalSoFar = netPensionSoFar + dpsCumulative;
       setOrMerge({
         age: snap.age + 1,
         contributions: totalPaidIn / fx,
         compounded:    compoundedPeak / fx,
         incomeTax:     totalIncomeTaxPaid / fx,
         netTakeHome:   totalNetTakeHome / fx,
+        // During retirement benefits line is flat at its career-end value
+        netTakeHomeWithBenefits: hasBenefitNetAdd ? totalNetTakeHomeWithBenefits : null,
         received:      (snap.cumulativePensionReceived ?? 0) / fx,
         netReceived:   netPensionSoFar,
         netTakeHomePlusPension: totalNetTakeHome / fx + netPensionSoFar,
+        // DPS pot is flat after retirement
+        dpsCompounded: hasDps ? dpsPotPeak : null,
+        netTotalReceived: netTotalSoFar,
+        netTakeHomePlusTotalPension: totalNetTakeHome / fx + netTotalSoFar,
+        netBenefitsPlusPension: hasBenefitNetAdd ? totalNetTakeHomeWithBenefits + netPensionSoFar : null,
+        netBenefitsPlusTotalPension: hasBenefitNetAdd ? totalNetTakeHomeWithBenefits + netTotalSoFar : null,
       });
     }
   }
@@ -173,6 +253,13 @@ export function Graph2_Accumulation({
     retireAnchor.received = 0;
     retireAnchor.netReceived = 0;
     retireAnchor.netTakeHomePlusPension = totalNetTakeHome / fx;
+    retireAnchor.netTotalReceived = 0;
+    retireAnchor.netTakeHomePlusTotalPension = totalNetTakeHome / fx;
+    if (hasBenefitNetAdd) {
+      retireAnchor.netBenefitsPlusPension = totalNetTakeHomeWithBenefits;
+      retireAnchor.netBenefitsPlusTotalPension = totalNetTakeHomeWithBenefits;
+    }
+    // benefits line is already flat from last career snap — no need to reset
   }
 
   const data = Array.from(ageMap.values()).sort((a, b) => a.age - b.age);
@@ -190,9 +277,31 @@ export function Graph2_Accumulation({
 
   return (
     <div className="mt-4">
-      <h3 className="text-xs text-slate-500 uppercase tracking-wide mb-2">
-        Pension Accumulation &amp; Fair Return
-      </h3>
+      <div className="flex flex-wrap items-center justify-between mb-2 gap-2">
+        <h3 className="text-xs text-slate-500 uppercase tracking-wide">
+          Pension Accumulation &amp; Fair Return
+        </h3>
+        {/* Line group selector */}
+        <div className="flex flex-wrap gap-1">
+          {LINE_GROUPS.filter(g => g.id !== 'benefits' || hasBenefitNetAdd).map(g => {
+            const on = visible.has(g.id);
+            return (
+              <button
+                key={g.id}
+                onClick={() => toggle(g.id)}
+                className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                  on
+                    ? 'border-slate-500 text-slate-200 bg-slate-700'
+                    : 'border-slate-700 text-slate-600 bg-slate-800/60 line-through'
+                }`}
+                style={on ? { borderColor: g.color, color: g.color } : {}}
+              >
+                {g.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
@@ -239,102 +348,176 @@ export function Graph2_Accumulation({
           {breakEvenAge !== null && (
             <ReferenceLine
               x={breakEvenAge}
-              stroke="#22c55e"
+              stroke="#34d399"
               strokeDasharray="4 2"
               strokeWidth={1}
               label={{
-                value: `Break-even ${breakEvenAge}`,
+                value: `State pension break-even: age ${breakEvenAge}`,
                 position: 'insideTopRight',
                 fontSize: 9,
-                fill: '#22c55e',
+                fill: '#34d399',
               }}
             />
           )}
 
-          {/* Total paid in — yellow, flat during retirement */}
-          <Line
-            dataKey="contributions"
-            name="Pension SSC Paid"
-            stroke="#facc15"
-            strokeWidth={1.5}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
+          {/* ── Accumulation group ── */}
+          {show('accumulation') && (
+            <Line
+              dataKey="contributions"
+              name="Pension SSC Paid"
+              stroke="#facc15"
+              strokeWidth={1.5}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          )}
+          {show('accumulation') && (
+            <Line
+              dataKey="compounded"
+              name="Fair return pot (3% real)"
+              stroke="#a78bfa"
+              strokeWidth={1.5}
+              strokeDasharray="5 3"
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          )}
+          {show('accumulation') && hasDps && (
+            <Line
+              dataKey="dpsCompounded"
+              name="DPS Pot (3rd Pillar)"
+              stroke="#7c3aed"
+              strokeWidth={1.5}
+              strokeDasharray="6 2"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
 
-          {/* Cumulative income tax — red, flat during retirement */}
-          <Line
-            dataKey="incomeTax"
-            name="Income Tax Paid"
-            stroke="#f87171"
-            strokeWidth={1.5}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
+          {/* ── Taxes group ── */}
+          {show('taxes') && (
+            <Line
+              dataKey="incomeTax"
+              name="Income Tax Paid"
+              stroke="#f87171"
+              strokeWidth={1.5}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          )}
 
-          {/* Cumulative net take-home — green, flat during retirement */}
-          <Line
-            dataKey="netTakeHome"
-            name="Net Take-Home"
-            stroke="#22c55e"
-            strokeWidth={1.5}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
+          {/* ── Take-Home group ──
+               When +Benefits is active, show the combined take-home+benefits line
+               (solid light green) instead of the base take-home line.
+               Dotted retirement lines switch to the benefits-baseline variant too. */}
+          {show('takeHome') && (!hasBenefitNetAdd || !show('benefits')) && (
+            <Line
+              dataKey="netTakeHome"
+              name="Net Take-Home"
+              stroke="#22c55e"
+              strokeWidth={1.5}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          )}
+          {show('takeHome') && hasBenefitNetAdd && show('benefits') && (
+            <Line
+              dataKey="netTakeHomeWithBenefits"
+              name="Take-Home + Benefits"
+              stroke="#86efac"
+              strokeWidth={1.5}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+          )}
+          {/* Dotted post-retirement lines: benefits variant when benefits is on */}
+          {show('statePension') && show('takeHome') && hasBenefitNetAdd && show('benefits') && (
+            <Line
+              dataKey="netBenefitsPlusPension"
+              name="(Benefits) + State Pension"
+              stroke="#86efac"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+          {show('combined') && show('takeHome') && hasBenefitNetAdd && show('benefits') && (
+            <Line
+              dataKey="netBenefitsPlusTotalPension"
+              name="(Benefits) + State + DPS"
+              stroke="#7dd3fc"
+              strokeWidth={1.5}
+              strokeDasharray="2 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
 
-          {/* Compounded value — violet dashed, flat during retirement */}
-          <Line
-            dataKey="compounded"
-            name="Compounded Value"
-            stroke="#a78bfa"
-            strokeWidth={1.5}
-            strokeDasharray="5 3"
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
+          {/* ── State pension group ── */}
+          {show('statePension') && (
+            <Line
+              dataKey="netReceived"
+              name="Net State Pension"
+              stroke="#4ade80"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+          {/* Dotted post-retirement: base take-home variant (only when benefits is off) */}
+          {show('statePension') && show('takeHome') && !(hasBenefitNetAdd && show('benefits')) && (
+            <Line
+              dataKey="netTakeHomePlusPension"
+              name="Take-Home + State Pension"
+              stroke="#86efac"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
 
-          {/* Cumulative gross pension received — dashed, retirement only */}
-          <Line
-            dataKey="received"
-            name="Gross Pension Rcvd"
-            stroke="#22c55e"
-            strokeWidth={1.5}
-            strokeDasharray="4 2"
-            dot={false}
-            connectNulls={false}
-            isAnimationActive={false}
-          />
-
-          {/* Cumulative net pension received after pension income tax — solid bright green */}
-          <Line
-            dataKey="netReceived"
-            name="Net Pension Rcvd"
-            stroke="#4ade80"
-            strokeWidth={2}
-            dot={false}
-            connectNulls={false}
-            isAnimationActive={false}
-          />
-
-          {/* Net pension received stacked on top of career net take-home — dotted, starts at take-home level */}
-          <Line
-            dataKey="netTakeHomePlusPension"
-            name="Take-Home + Net Pension"
-            stroke="#86efac"
-            strokeWidth={1.5}
-            strokeDasharray="4 3"
-            dot={false}
-            connectNulls={false}
-            isAnimationActive={false}
-          />
+          {/* ── Combined State + DPS group ── */}
+          {show('combined') && (
+            <Line
+              dataKey="netTotalReceived"
+              name="State + DPS (cumulative)"
+              stroke="#38bdf8"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+          {show('combined') && show('takeHome') && !(hasBenefitNetAdd && show('benefits')) && (
+            <Line
+              dataKey="netTakeHomePlusTotalPension"
+              name="Take-Home + State + DPS"
+              stroke="#7dd3fc"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
 
       {/* ── Summary stat row ── */}
-      <div className="mt-2 grid grid-cols-6 gap-2 text-xs">
+      {/* Row 1: career cash-flow stats */}
+      <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
         <div className="bg-slate-900/40 rounded-lg p-2 text-center">
           <p className="text-green-400 font-mono font-semibold">{fmt(totalNetTakeHome / fx)}</p>
           <p className="text-slate-500 mt-0.5 leading-tight">Net take-home</p>
@@ -353,18 +536,56 @@ export function Graph2_Accumulation({
           <p className="text-red-400 font-mono font-semibold">{fmt(totalIncomeTaxPaid / fx)}</p>
           <p className="text-slate-500 mt-0.5 leading-tight">Income tax paid</p>
         </div>
-        <div className="bg-slate-900/40 rounded-lg p-2 text-center">
-          <p className="text-violet-400 font-mono font-semibold">{fmt(compoundedPeak / fx)}</p>
-          <p className="text-slate-500 mt-0.5 leading-tight">Real compounded (+{gainPct}%)</p>
-        </div>
-        <div className="bg-slate-900/40 rounded-lg p-2 text-center">
-          <p className="text-sky-400 font-mono font-semibold">
-            {fmt(fairReturn.monthlyAnnuity / fx)}
-            <span className="text-xs font-normal text-slate-500">/mo</span>
-          </p>
-          <p className="text-slate-500 mt-0.5 leading-tight">
-            {breakEvenAge !== null ? `Break-even age ${breakEvenAge}` : 'Fair return annuity'}
-          </p>
+      </div>
+
+      {/* Row 2: pension return comparison — clearly separated */}
+      <div className="mt-1.5 rounded-lg border border-slate-700/60 bg-slate-900/20 p-2">
+        <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5 px-0.5">Pension return comparison — same SSC contributions</p>
+        <div className={`grid gap-2 text-xs ${hasDps ? 'grid-cols-4' : 'grid-cols-3'}`}>
+
+          {/* Compounded pot — violet, matching the dashed violet line */}
+          <div className="bg-violet-950/30 border border-violet-700/40 rounded-lg p-2 text-center">
+            <p className="text-violet-400 font-mono font-semibold">{fmt(compoundedPeak / fx)}</p>
+            <p className="text-slate-500 mt-0.5 leading-tight">Fair return pot</p>
+            <p className="text-[10px] text-slate-600 leading-tight">+{gainPct}% on SSC paid • 3% real</p>
+          </div>
+
+          {/* Fair return annuity — violet, clearly distinguishable */}
+          <div className="bg-violet-950/30 border border-violet-600/50 rounded-lg p-2 text-center">
+            <p className="text-violet-300 font-mono font-semibold">
+              {fmt(fairReturn.monthlyAnnuity / fx)}
+              <span className="text-xs font-normal text-slate-500">/mo</span>
+            </p>
+            <p className="text-slate-400 mt-0.5 leading-tight font-medium">Fair return annuity</p>
+            <p className="text-[10px] text-slate-600 leading-tight">If SSC invested at 3% real</p>
+          </div>
+
+          {/* Actual state pension — green, matching the net pension received line */}
+          <div className="bg-emerald-950/30 border border-emerald-700/50 rounded-lg p-2 text-center">
+            <p className="text-emerald-300 font-mono font-semibold">
+              {fmt(netMonthlyStatePension / fx)}
+              <span className="text-xs font-normal text-slate-500">/mo</span>
+            </p>
+            <p className="text-slate-400 mt-0.5 leading-tight font-medium">State pension (net)</p>
+            <p className="text-[10px] leading-tight">
+              {breakEvenAge !== null
+                ? <span className="text-amber-400">Break-even age {breakEvenAge}</span>
+                : <span className="text-slate-600">No break-even within lifespan</span>
+              }
+            </p>
+          </div>
+
+          {/* DPS — only when active */}
+          {hasDps && (
+            <div className="bg-violet-950/30 border border-violet-700/40 rounded-lg p-2 text-center">
+              <p className="text-violet-200 font-mono font-semibold">
+                {fmt(dpsMonthlyPension)}
+                <span className="text-xs font-normal text-slate-500">/mo</span>
+              </p>
+              <p className="text-slate-400 mt-0.5 leading-tight font-medium">DPS 3rd pillar</p>
+              <p className="text-[10px] text-slate-600 leading-tight">pot: {fmt(dpsPotPeak)}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -397,7 +618,13 @@ export function WagePieChart({
   const fmt = (n: number) => `${sym}${Math.round(n).toLocaleString()}${sfx}`;
 
   const grossMonthly = taxResult.grossMonthly;
-  const netPay = Math.max(0, grossMonthly - taxResult.incomeTaxMonthly - sscResult.employeeTotal);
+  const netCashPay = Math.max(0, grossMonthly - taxResult.incomeTaxMonthly - sscResult.employeeTotal);
+
+  // CZ benefits
+  const czBr = result.czBenefitResult;
+  const netBenefitAmount = (czBr?.totalNetAdd ?? 0);       // fringe + meal → employee net
+  const dpsAmount        = (czBr?.pensionContribMonthly ?? 0); // DPS → locked
+
   // OSVČ/PD: no employer SSC, total cost = gross
   const isOSVC = sscResult.employerTotal === 0 && sscResult.totalEmployerCost === grossMonthly;
 
@@ -412,6 +639,17 @@ export function WagePieChart({
         ? ER_PENSION_COLORS[erPIdx++ % ER_PENSION_COLORS.length]
         : ER_OTHER_COLORS[erOIdx++ % ER_OTHER_COLORS.length];
       slices.push({ name: `ER: ${comp.label}`, value: comp.employerAmount / fx, fill });
+    }
+  }
+
+  // CZ benefit slices — shown ADJACENT to employer SSC (they are employer costs, just tax-exempt)
+  // Placed here before EE slices so the donut visually groups all employer costs together.
+  if (!isOSVC) {
+    if (netBenefitAmount > 0) {
+      slices.push({ name: 'Fringe/Meal Benefits', value: netBenefitAmount / fx, fill: '#38bdf8' });
+    }
+    if (dpsAmount > 0) {
+      slices.push({ name: 'DPS Contribution', value: dpsAmount / fx, fill: '#7c3aed' });
     }
   }
 
@@ -431,8 +669,8 @@ export function WagePieChart({
     slices.push({ name: 'Income Tax', value: taxResult.incomeTaxMonthly / fx, fill: '#ef4444' });
   }
 
-  // Net pay — divide by fx like all other slices
-  slices.push({ name: 'Net Pay', value: netPay / fx, fill: '#22c55e' });
+  // Net cash pay — divide by fx like all other slices
+  slices.push({ name: 'Net Pay (Cash)', value: netCashPay / fx, fill: '#22c55e' });
 
   const total = slices.reduce((s, d) => s + d.value, 0);
 
@@ -442,15 +680,18 @@ export function WagePieChart({
   const eePension = slices.filter(s => s.name.startsWith('EE:') && sscResult.components.find(c => `EE: ${c.label}` === s.name)?.fundsPension);
   const eeOther   = slices.filter(s => s.name.startsWith('EE:') && !sscResult.components.find(c => `EE: ${c.label}` === s.name)?.fundsPension);
   const itSlice   = slices.find(s => s.name === 'Income Tax');
-  const npSlice   = slices.find(s => s.name === 'Net Pay');
+  const npSlice   = slices.find(s => s.name === 'Net Pay (Cash)');
+  const benefitSlice = slices.find(s => s.name === 'Fringe/Meal Benefits');
+  const dpsSlice     = slices.find(s => s.name === 'DPS Contribution');
 
   const pct = (v: number) => total > 0 ? `${Math.round(v / total * 100)}%` : '—';
 
-  // Outer bracket ring: two segments — employer top-up vs gross
-  const erTotalDisplay = slices.filter(s => s.name.startsWith('ER:')).reduce((s, d) => s + d.value, 0);
+  // Outer bracket ring: employer overhead + gross
+  const erTotalDisplay = slices.filter(s => s.name.startsWith('ER:') || s.name === 'Fringe/Meal Benefits' || s.name === 'DPS Contribution')
+    .reduce((s, d) => s + d.value, 0);
   const grossDisplay   = total - erTotalDisplay;
   const bracketData = [
-    { name: 'Employer SSC\n(on top of gross)', value: erTotalDisplay },
+    { name: 'Employer Cost\n(on top of gross)', value: erTotalDisplay },
     { name: 'Gross', value: grossDisplay },
   ];
 
@@ -473,7 +714,7 @@ export function WagePieChart({
         fill={isEmployer ? '#94a3b8' : '#64748b'}
         fontWeight={600}
       >
-        {isEmployer ? 'ER top-up' : 'Gross'}
+        {isEmployer ? 'ER cost' : 'Gross'}
       </text>
     );
   };
@@ -549,7 +790,7 @@ export function WagePieChart({
           {!isOSVC && (
             <>
               <div className="text-slate-500 uppercase tracking-wide text-[10px] pb-0.5 border-b border-dashed border-slate-700">
-                Employer SSC — on top of gross ({pct(erTotalDisplay)})
+                Employer Cost (on top of gross) — {pct(erTotalDisplay)}
               </div>
               {[...erOther, ...erPension].map((s) => {
                 const isPension = erPension.includes(s);
@@ -563,6 +804,21 @@ export function WagePieChart({
                   </div>
                 );
               })}
+              {/* Benefits are employer costs — tax-exempt but real outflows */}
+              {benefitSlice && (
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: benefitSlice.fill }} />
+                  <span className="text-sky-300 truncate">Fringe/Meal Benefits <span className="text-[10px] text-sky-600">tax-exempt</span></span>
+                  <span className="ml-auto font-mono text-slate-300 pl-1">{pct(benefitSlice.value)}</span>
+                </div>
+              )}
+              {dpsSlice && (
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: dpsSlice.fill }} />
+                  <span className="text-violet-400 truncate">DPS Contribution <span className="text-[10px] text-violet-600">tax-exempt</span></span>
+                  <span className="ml-auto font-mono text-slate-300 pl-1">{pct(dpsSlice.value)}</span>
+                </div>
+              )}
             </>
           )}
 
@@ -592,7 +848,7 @@ export function WagePieChart({
           {npSlice && (
             <div className="flex items-center gap-1.5 truncate">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: npSlice.fill }} />
-              <span className="text-green-400 truncate">Net Pay</span>
+              <span className="text-green-400 truncate">Net Pay (Cash)</span>
               <span className="ml-auto font-mono text-slate-300 pl-1">{pct(npSlice.value)}</span>
             </div>
           )}

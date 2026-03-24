@@ -6,6 +6,7 @@
 import type {
   CountryConfig, WageMode, CareerDefaults, ScenarioResult,
   SelfEmploymentMode, SSCResult, SSCComponentResult, TaxResult,
+  CZBenefitSelections, CZBenefitResult,
 } from '../types';
 import { TaxEngine } from '../engines/TaxEngine';
 import { SSCEngine } from '../engines/SSCEngine';
@@ -82,12 +83,70 @@ export function computePensionTax(country: CountryConfig, monthlyPension: number
   return taxResult.incomeTaxMonthly;
 }
 
+/**
+ * Compute the CZ employer-benefit result.
+ *
+ * Fringe benefits and meal vouchers increase the employee's effective take-home
+ * (no tax / SSC on either side).  Pension contributions are accumulated at the
+ * country's Pillar-2 real return rate and annuitised over the retirement period.
+ *
+ * Accumulation formula (annuity-due): FV = PMT×[(1+r)ⁿ−1]/r×(1+r)
+ * Annuity drawdown:                  PMT = PV × r / [1−(1+r)⁻ⁿ]
+ */
+function computeCZBenefits(
+  selections: CZBenefitSelections,
+  returnRate: number,
+  careerYears: number,
+  retirementDuration: number,
+): CZBenefitResult {
+  const fringeBenefitMonthly  = selections.fringe_benefit.enabled  ? selections.fringe_benefit.amountMonthly  : 0;
+  const mealVoucherMonthly    = selections.meal_voucher.enabled    ? selections.meal_voucher.amountMonthly    : 0;
+  const pensionContribMonthly = selections.pension_contrib.enabled ? selections.pension_contrib.amountMonthly : 0;
+
+  const totalNetAdd = fringeBenefitMonthly + mealVoucherMonthly;
+
+  // DPS: annual contribution compounded over career years
+  const annualDPS = pensionContribMonthly * 12;
+  let dpsPotAtRetirement = 0;
+  if (annualDPS > 0) {
+    if (returnRate === 0) {
+      dpsPotAtRetirement = annualDPS * careerYears;
+    } else {
+      const r = returnRate;
+      const n = careerYears;
+      // FV of annuity-due
+      dpsPotAtRetirement = annualDPS * ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
+    }
+  }
+
+  // Monthly annuity from DPS pot over retirement duration
+  let dpsMonthlyPension = 0;
+  if (dpsPotAtRetirement > 0 && retirementDuration > 0) {
+    const rM = returnRate / 12;
+    const nM = retirementDuration * 12;
+    dpsMonthlyPension = rM === 0
+      ? dpsPotAtRetirement / nM
+      : (dpsPotAtRetirement * rM) / (1 - Math.pow(1 + rM, -nM));
+  }
+
+  return {
+    fringeBenefitMonthly,
+    mealVoucherMonthly,
+    pensionContribMonthly,
+    totalNetAdd,
+    dpsPotAtRetirement,
+    dpsMonthlyPension,
+    dpsReturnRate: returnRate,
+  };
+}
+
 export function computeScenario(
   country: CountryConfig,
   wageMode: WageMode,
   careerOverrides: Partial<CareerDefaults>,
   awSource: 'model' | 'oecd' = 'model',
   selfEmploymentModeName?: string | null,
+  czBenefits?: CZBenefitSelections,
 ): ScenarioResult {
   // Resolve the effective average wage based on the selected AW source.
   // For 'oecd', fall back to model AW if oecdAverageWage is not present on this country.
@@ -191,6 +250,13 @@ export function computeScenario(
     pensionResult.monthlyPension
   );
 
+  // ── CZ employer benefits ──────────────────────────────────────────────────────
+  // Computed before TimelineBuilder so it can be passed in for snapshot population.
+  const czBenefitResult: CZBenefitResult | undefined =
+    country.code === 'CZ' && !selfEmploymentModeName && country.employerBenefits?.available && czBenefits
+      ? computeCZBenefits(czBenefits, returnRate, careerYears, career.retirementDuration)
+      : undefined;
+
   const timeline = TimelineBuilder.build(
     country,
     gross,
@@ -203,7 +269,8 @@ export function computeScenario(
     selfEmpMode?.sscOverrideComponents?.length
       ? { sscResult, pensionGross: pensionBase, taxResult }
       : undefined,
+    czBenefitResult,
   );
 
-  return { resolvedWage: resolvedWageActual, taxResult, sscResult, pensionResult, timeline, fairReturn };
+  return { resolvedWage: resolvedWageActual, taxResult, sscResult, pensionResult, timeline, fairReturn, czBenefitResult };
 }

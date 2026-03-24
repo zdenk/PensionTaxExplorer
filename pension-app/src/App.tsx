@@ -44,6 +44,8 @@ export default function App() {
         state.careerOverrides,
         state.awSource,
         modeName,
+        // CZ employer benefits — only consumed by the CZ engine; ignored for other countries
+        state.czBenefits,
       );
     }
   }
@@ -87,6 +89,22 @@ export default function App() {
           <span className="text-xs text-slate-600 font-mono">v2.0 Phase 2</span>
         </div>
       </header>
+
+      {/* WIP disclaimer banner */}
+      <div className="bg-amber-950 border-b border-amber-700 px-4 py-1.5 flex items-center gap-2 shrink-0">
+        <span className="text-amber-400 text-xs font-semibold shrink-0">🚧 Work in progress</span>
+        <span className="text-amber-300/80 text-xs">
+          Calculation errors may be present — parameters and formulas have not been fully audited. For illustrative purposes only; not financial or tax advice.{' '}
+          <a
+            href="https://github.com/zdenk/PensionTaxExplorer/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-amber-200 transition-colors"
+          >
+            Report an issue on GitHub
+          </a>
+        </span>
+      </div>
 
       {/* Controls — hidden when Sources page is open */}
       {!showSources && <ControlsBar state={state} dispatch={dispatch} />}
