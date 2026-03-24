@@ -18,6 +18,7 @@ export type AppAction =
   | { type: 'SET_WAGE_MODE'; mode: WageMode }
   | { type: 'SET_AW_SOURCE'; source: 'model' | 'oecd' }
   | { type: 'SET_RR_SOURCE'; source: 'model' | 'oecd' }
+  | { type: 'SET_FAIR_RETURN_RATE'; rate: number }
   | { type: 'SET_CURRENCY'; currency: 'EUR' | 'local' }
   | { type: 'SET_CAREER_OVERRIDE'; key: keyof CareerDefaults; value: number }
   | { type: 'RESET_CAREER_OVERRIDES' }
@@ -61,6 +62,7 @@ export const INITIAL_STATE: AppState = {
   sidebarOpen: false,
   selfEmploymentModes: {},        // all countries start in standard employee mode
   czBenefits: DEFAULT_CZ_BENEFITS,
+  fairReturnRate: 0.030,          // 3 % real net-of-fees default
 };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -108,6 +110,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_RR_SOURCE':
       return { ...state, rrSource: action.source };
+
+    case 'SET_FAIR_RETURN_RATE':
+      return { ...state, fairReturnRate: Math.max(0.01, Math.min(0.03, action.rate)) };
 
     case 'SET_CURRENCY':
       // Enforce EUR-only when multiple non-EUR currencies are selected

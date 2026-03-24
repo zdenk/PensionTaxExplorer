@@ -40,8 +40,11 @@ export const TimelineBuilder = {
     retirementDuration: number,
     overrides?: { sscResult?: SSCResult; pensionGross?: number; taxResult?: TaxResult },
     czBenefitResult?: CZBenefitResult,
+    returnRateOverride?: number,
   ): YearlySnapshot[] {
-    const returnRate = getReturnRate(country);
+    // Use the global slider override when provided, otherwise fall back to the per-country default.
+    // This keeps the DPS career accumulation consistent with computeCZBenefits and FairReturnEngine.
+    const returnRate = returnRateOverride ?? getReturnRate(country);
     const careerYears = retirementAge - careerStartAge;
     const endAge = retirementAge + retirementDuration;
 

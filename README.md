@@ -88,6 +88,88 @@ Statutory pension systems across 22 countries involve hundreds of parameters (ac
 
 ---
 
+## How to Use
+
+### 1. Select Countries
+Click the **Countries** dropdown in the controls bar at the top of the page to add up to three countries. Each country appears as a column. Remove a country by clicking the **×** on its chip. Some countries show a `~` indicator meaning their parameters are incomplete or indicative only.
+
+### 2. Choose a Wage Mode
+Three wage modes are available, toggled by the **× of AW / Fixed Gross / Fixed Cost** buttons:
+
+| Mode | What it does |
+|---|---|
+| **× of AW** (default) | Sets the gross wage as a multiple of each country's average wage (AW). Use the slider or preset buttons (0.5×, 1.0×, 1.5×, 2.0×, 3.0×, 4.0×). This is the primary mode for cross-country comparison — the same multiple shows structurally comparable earner positions in each country. |
+| **Fixed Gross EUR** | Enter a fixed monthly gross wage in EUR. The app converts to local currency using the ECB exchange rate. Cross-country comparison is at identical purchasing-power terms. |
+| **Fixed Employer Cost EUR** | Enter a total monthly employer cost (gross + employer SSC). The app back-solves the gross wage for each country. Useful for comparing what a budget of, say, €5,000/month buys in each country. |
+
+> **Tip:** In × of AW mode, 0.67× approximates the median wage in most EU countries, giving a more representative picture than 1.0× (the mean is right-skewed by high earners).
+
+### 3. Average Wage Source
+The **AW source** toggle switches between:
+- **Model** — national-statistics average wage encoded in the app (Eurostat / national authority)
+- **OECD TW** — OECD Taxing Wages 2025 average wage (2024 data), used as the OECD benchmark basis
+
+These differ by a few percent for most countries and can produce noticeably different results at multiplier-mode inputs.
+
+### 4. Career Assumptions
+Click **Career Assumptions** (▶ in the controls bar) to expand the override panel:
+
+| Control | Default | Range | Effect |
+|---|---|---|---|
+| **Career start age** | 25 | 16–40 | Age at which the modelled career begins; directly affects total years of SSC contributions and pension accrual. |
+| **Retirement age** | Country statutory age | 55–75 | Overrides the country's statutory retirement age. Earlier retirement means fewer contribution years and, for NDC/funded systems, a lower annuity (higher divisor). |
+| **Duration (yrs)** | 20 | 5–40 | Post-retirement period used for the actuarial-equivalent (fair-return) annuity calculation. Does not affect the state pension projection. |
+| **Actuarial-equivalent return rate** | 3.0 % | 1.0–3.0 % real | Annual real return used to compound the hypothetical funded-equivalent account. Lower values (1–2 %) make funded investment look less attractive; 3 % is the equity-heavy upper bound. See the [methodological note](#2-the-3--real-return-default-is-optimistic) on why this matters. |
+
+Click **Reset to defaults** to restore all career assumptions and the return rate to their initial values.
+
+### 5. Replacement Rate Source
+The **Replacement rate** toggle switches the KPI headline figure between:
+- **Model** — the app's own computed gross replacement rate
+- **OECD PaG** — tabulated OECD *Pensions at a Glance* gross replacement rate (interpolated at the current wage multiple)
+
+Use Model for exploratory work; switch to OECD PaG to sanity-check and compare against the published benchmark.
+
+### 6. Currency Display
+The **EUR / Local** toggle in the controls bar switches all monetary amounts between euro and each country's local currency. In cross-currency views (multiple countries with different currencies), the local-currency display is locked to EUR.
+
+### 7. Czech Republic Self-Employment Modes
+For countries that have a modelled self-employment variant (e.g. Czech Republic OSVČ), a **SE** button appears on the country chip. Toggle it to add a self-employment column alongside the standard employee column (counts toward the 3-column maximum).
+
+### 8. Czech Republic — Employer Benefits & DPS
+
+When Czech Republic is selected, an **Employer Benefits** panel appears inside the CZ country card (below the KPI row). It is expanded by default and shows three statutory tax-optimised benefit components, each individually toggleable:
+
+| Toggle | Czech name | What it models | Statutory cap (2026) |
+|---|---|---|---|
+| **Non-monetary benefits** | Zaměstnanecké benefity | Recreation, sport, culture, healthcare, education, transport vouchers — any non-cash benefit exempt under §6(9)(g) ZDP | ½ × AW/year ≈ **24,484 CZK/year** (slider max ≈ 2,040 CZK/month) |
+| **Cash meal allowance** | Stravenkový paušál | Daily cash meal supplement paid by the employer in lieu of meal vouchers — exempt under §6(9)(b) ZDP | 70 % × 166 CZK/day × 276 working days ≈ **32,054 CZK/year** (slider max ≈ 2,671 CZK/month) |
+| **Employer pension contribution** | Příspěvek na DPS / životní pojištění | Employer contributions to the employee's supplementary pension savings (Doplňkové penzijní spoření, DPS) or life insurance — exempt under §6(9)(l) ZDP | **50,000 CZK/year** combined (slider max ≈ 4,167 CZK/month) |
+
+All three benefits are exempt from **both** employee income tax and employee/employer SSC. The slider on each row sets the monthly amount; the toggle enables or disables it entirely. The statutory caps are enforced as slider maximums.
+
+**Important:** these benefits are employer-provided *on top of* the gross wage — they are not deducted from gross pay. Enabling them increases the employee's effective net value without increasing the employer's superordinate payroll cost (within the exemption caps), because the SSC that would otherwise apply on equivalent cash pay is saved on both sides.
+
+#### DPS Projection callout
+
+When the **Employer pension contribution** benefit is enabled, a purple **DPS projection** callout appears below the benefit sliders, showing:
+
+| Field | Description |
+|---|---|
+| **Monthly contribution** | The enabled DPS amount in CZK/month |
+| **Real return** | Annual real return applied to the DPS pot — pulled from the **Actuarial-equivalent return rate** slider in Career Assumptions (1–3 % real, default 3 %) |
+| **Pot at retirement** | Accumulated DPS account balance in real (constant-price) terms at retirement, compounded at the selected return rate over the career |
+| **Monthly DPS annuity** | The pot divided by the **Duration (yrs)** setting from Career Assumptions, converted to a monthly amount |
+
+The DPS pot and the resulting monthly annuity are included in the **Total pension** KPI and in the accumulation chart (Graph 2) as a separate violet line, enabling a direct visual comparison between the state PAYG pension, the actuarial-equivalent funded scenario, and the employer DPS top-up.
+
+> **Comparison tip:** To compare CZ against other countries on a like-for-like basis (standard employee only), disable all three benefit toggles. Enabling tax-optimised benefits gives an employer-funded advantage that is not modelled for other countries — the gap would narrow if equivalent benefits for other countries were also modelled. See the [EU-22 benefit equivalents table](#employer-tax-optimised-benefits-not-modelled--except-czech-republic) for reference amounts.
+
+### 9. Sources Page
+Click **Sources** in the top-right corner to open a full reference page listing all data sources, API endpoints, and country-specific notes.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -112,8 +194,8 @@ No runtime API calls. All computation happens in the browser using pure function
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-github-username>/pension-tax-explorer.git
-cd pension-tax-explorer/pension-app
+git clone https://github.com/zdenk/PensionTaxExplorer.git
+cd PensionTaxExplorer/pension-app
 
 # Install dependencies
 npm install
@@ -219,7 +301,7 @@ The repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml
 
 The live URL will be:
 ```
-https://<your-github-username>.github.io/<repo-name>/
+https://zdenk.github.io/PensionTaxExplorer/
 ```
 
 ---
@@ -232,6 +314,51 @@ https://<your-github-username>.github.io/<repo-name>/
 - Non-OECD EU members (BG, RO, HR, CY, MT) are deferred to a future Phase 6 data pack.
 - **Model precision:** The validation suite compares outputs against OECD *Pensions at a Glance* benchmarks with a tolerance of ±8–12 percentage points to account for structural differences (OECD uses a career with wage growth; this model uses a constant wage). The tool is designed for **comparative illustration**, not actuarial precision.
 - **Funded Pillar 2 / fair-return returns are deterministic:** All funded account projections assume a constant 3 % real annual return with no volatility, no sequence-of-returns risk, and no management fees. Actual long-term outcomes will differ materially depending on market conditions and the timing of retirement.
+
+---
+
+## Methodological notes & known directional biases
+
+This tool is methodologically transparent but has several structural features that systematically tilt the fair-return comparison against PAYG systems. Users drawing conclusions from the actuarial-equivalent ("fair return") output should be aware of the following:
+
+### 1. The actuarial-equivalent comparison is asymmetric
+
+The funded-equivalent calculation asks: *what monthly annuity would you receive if your pension SSC had been invested at 3 % real and paid out over retirement?* For most earners above the median in any PAYG system, the answer is "more than your state pension." This makes every PAYG system look like a bad deal by construction.
+
+The asymmetry is that PAYG systems deliver value the comparison does not price:
+
+- **Within-cohort redistribution** — progressive benefit formulas transfer from high earners to low earners. A high earner's contributions partly fund a low earner's pension; a funded account cannot do this.
+- **Longevity pooling** — PAYG pensions pay until death regardless of market conditions. The funded-equivalent annuity assumes a fixed 20-year (or set) payout horizon and a constant 3 % real return — no sequence-of-returns risk, no longevity tail.
+- **Survivor and disability benefits** — most national systems include survivor pensions and disability insurance within the SSC contribution. The funded-equivalent column credits none of this.
+- **Non-contributory credits** — parental leave, unemployment, sickness, and military service periods are credited by all 22 countries covered (see table below). None are modelled; see the note in the chart for interpretation guidance.
+
+The gap between the state pension and the actuarial-equivalent annuity reflects the cost of these features, not system inefficiency alone. For a high-earning professional with a full unbroken career, almost all PAYG systems will show a gap — this is expected and does not mean the system is "worse." It is however a point for discussion about the width of the gap for different earner profiles.
+
+### 2. The 3 % real return default is optimistic
+
+The tool uses 3 % **real** net-of-fees as the baseline for all funded-equivalent projections. This is toward the upper end of what EU mandatory funded schemes have historically delivered, especially after management costs:
+
+- Poland's OFE delivered significantly below this after fees and following the 2014 asset transfer to ZUS.
+- Slovakia's DSS II-pillar funds have varied widely; net real returns over 20+ years are substantially below 3 % for bond-heavy default funds.
+- The OECD itself uses a range of 1.5 %–3 % real in its funded-pension sensitivity analyses.
+
+Three per cent is commonly cited in policy literature as a "long-run equity-heavy" assumption. It should be read as an upper-bound scenario, not a baseline expectation. The comparison would look less favourable for funded equivalents at 1 % or 2 % real.
+
+### 3. The constant-wage assumption disadvantages progressive systems unevenly
+
+The model uses a flat real wage across the entire career. Real wages typically grow 2–3 % per year in the early career and flatten with age; this understates lifetime pension-eligible earnings. The effect is not uniform across pension architectures:
+
+- **NDC systems** (Sweden, Italy, Poland, Latvia, Estonia) accumulate based on actual contribution history — a flat wage profile understates the pot that real careers generate.
+- **Best-years or final-salary DB systems** (Spain uses the last 25 years; Portugal uses career average) are less affected because the model's single wage approximates the wage used in the formula.
+- **Progressive benefit formulas** (Czech Republic, Germany, Netherlands) compress replacement rates at higher earners — the constant-wage assumption does not change this, but underestimates pension for careers with genuine wage growth.
+
+### 4. Czech Republic as validation anchor introduces framing defaults
+
+This tool was developed primarily with the Czech system in mind (see disclaimer above). The Czech system is structurally unusual among EU OECD countries: low replacement rates by EU standards, one of the most strongly redistributive benefit formulas (the 99 %/26 %/0 % reduction thresholds), and a design that produces large gaps between high-earner contributions and benefits. Using CZ as the primary verification anchor means the tool was calibrated against a country where the PAYG "gap" is structurally large. Results for Germany, Sweden, Austria, and Ireland should be read independently and not benchmarked against Czech outcomes as if CZ were typical.
+
+### 5. Non-contributory periods are documented but not modelled
+
+The table below lists credited non-contributory periods (parental leave, study, unemployment, military service) for all 22 countries. **None are modelled.** For countries with generous non-contributory credits — Germany (3 years/child at full average wage), Ireland (20 years home-caring credits), Netherlands and Denmark (residence-based accrual) — the model materially understates the pension a typical earner with children or interrupted careers would actually receive. This affects the state pension column only, not the actuarial-equivalent column, which further widens the apparent gap in favour of the funded alternative.
 
 ---
 

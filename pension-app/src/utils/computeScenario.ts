@@ -147,6 +147,7 @@ export function computeScenario(
   awSource: 'model' | 'oecd' = 'model',
   selfEmploymentModeName?: string | null,
   czBenefits?: CZBenefitSelections,
+  fairReturnRateOverride?: number,
 ): ScenarioResult {
   // Resolve the effective average wage based on the selected AW source.
   // For 'oecd', fall back to model AW if oecdAverageWage is not present on this country.
@@ -239,7 +240,8 @@ export function computeScenario(
   };
 
   const monthlyPensionSSC = SSCEngine.pensionSSCTotal(sscResult);
-  const returnRate = country.pillar2?.defaultAnnualReturnRate ?? 0.030; // 3% real net-of-fees fallback — constant prices model
+  // Use global override if provided, otherwise fall back to per-country default.
+  const returnRate = fairReturnRateOverride ?? country.pillar2?.defaultAnnualReturnRate ?? 0.030;
 
   const fairReturn = FairReturnEngine.calculate(
     monthlyPensionSSC,
@@ -270,6 +272,9 @@ export function computeScenario(
       ? { sscResult, pensionGross: pensionBase, taxResult }
       : undefined,
     czBenefitResult,
+    // Pass the same rate used by FairReturnEngine and computeCZBenefits so the DPS
+    // career accumulation in the timeline is identical to the czBenefitResult values.
+    returnRate,
   );
 
   return { resolvedWage: resolvedWageActual, taxResult, sscResult, pensionResult, timeline, fairReturn, czBenefitResult };
