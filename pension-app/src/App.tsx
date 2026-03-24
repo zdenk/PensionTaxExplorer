@@ -1,7 +1,5 @@
 /**
  * App — EU27 Pension & Tax Burden Explorer
- * Phase 2: Controls bar + wage breakdown + SSC redistribution tables
- * Phase 3 (next): Charts
  */
 
 import { useReducer, useState } from 'react';
@@ -9,6 +7,7 @@ import { appReducer, INITIAL_STATE } from './state/appReducer';
 import { COUNTRY_MAP } from './data/countryRegistry';
 import { computeScenario } from './utils/computeScenario';
 import { ControlsBar } from './components/ControlsBar';
+import { EUMap } from './components/EUMap';
 import { CountryCard } from './components/CountryCard';
 import { ComparisonCharts } from './components/ComparisonCharts';
 import { SourcesPage } from './components/SourcesPage';
@@ -87,7 +86,7 @@ export default function App() {
           >
             Sources
           </button>
-          <span className="text-xs text-slate-600 font-mono">v2.0 Phase 2</span>
+          <span className="text-xs text-slate-600 font-mono">v2.0</span>
         </div>
       </header>
 
@@ -118,6 +117,9 @@ export default function App() {
 
       {/* Controls — hidden when Sources page is open */}
       {!showSources && <ControlsBar state={state} dispatch={dispatch} />}
+
+      {/* EU choropleth map — just below wage controls */}
+      {!showSources && <EUMap state={state} dispatch={dispatch} />}
 
       {/* Sources page — replaces main content when open */}
       {showSources ? (

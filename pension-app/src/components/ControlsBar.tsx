@@ -162,6 +162,8 @@ function MultiplierInput({ mode, dispatch }: { mode: WageMode; dispatch: React.D
 
 function FixedEurInput({ mode, dispatch }: { mode: WageMode; dispatch: React.Dispatch<AppAction> }) {
   const value = mode.type === 'fixed_gross_eur' ? mode.value : 3_000;
+  const SLIDER_MIN = 500;
+  const SLIDER_MAX = 8_000;
   return (
     <div className="flex items-center gap-2">
       <span className="text-slate-400 text-sm">€</span>
@@ -169,7 +171,13 @@ function FixedEurInput({ mode, dispatch }: { mode: WageMode; dispatch: React.Dis
         type="number" min={100} max={100_000} step={100}
         value={value}
         onChange={e => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'fixed_gross_eur', value: parseInt(e.target.value, 10) || 0 } })}
-        className="w-32 bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-sky-500"
+        className="w-28 bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-sky-500"
+      />
+      <input
+        type="range" min={SLIDER_MIN} max={SLIDER_MAX} step={100}
+        value={Math.min(Math.max(value, SLIDER_MIN), SLIDER_MAX)}
+        onChange={e => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'fixed_gross_eur', value: parseInt(e.target.value, 10) } })}
+        className="w-36 accent-sky-500"
       />
       <span className="text-slate-400 text-sm">EUR/month gross</span>
     </div>
@@ -178,6 +186,8 @@ function FixedEurInput({ mode, dispatch }: { mode: WageMode; dispatch: React.Dis
 
 function FixedEmployerCostEurInput({ mode, dispatch }: { mode: WageMode; dispatch: React.Dispatch<AppAction> }) {
   const value = mode.type === 'fixed_employer_cost_eur' ? mode.value : 5_000;
+  const SLIDER_MIN = 500;
+  const SLIDER_MAX = 8_000;
   return (
     <div className="flex items-center gap-2">
       <span className="text-slate-400 text-sm">€</span>
@@ -185,7 +195,13 @@ function FixedEmployerCostEurInput({ mode, dispatch }: { mode: WageMode; dispatc
         type="number" min={100} max={200_000} step={100}
         value={value}
         onChange={e => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'fixed_employer_cost_eur', value: parseInt(e.target.value, 10) || 0 } })}
-        className="w-32 bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-sky-500"
+        className="w-28 bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-sky-500"
+      />
+      <input
+        type="range" min={SLIDER_MIN} max={SLIDER_MAX} step={100}
+        value={Math.min(Math.max(value, SLIDER_MIN), SLIDER_MAX)}
+        onChange={e => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'fixed_employer_cost_eur', value: parseInt(e.target.value, 10) } })}
+        className="w-36 accent-sky-500"
       />
       <span className="text-slate-400 text-sm">EUR/month total cost</span>
     </div>
@@ -283,7 +299,7 @@ function CurrencyToggle({ state, dispatch }: { state: AppState; dispatch: React.
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs text-slate-500 uppercase tracking-wide">Display currency</span>
-      <div className="flex gap-1 relative group">
+      <div className="flex gap-1">
         {(['EUR', 'local'] as const).map(c => (
           <button
             key={c}
@@ -298,12 +314,12 @@ function CurrencyToggle({ state, dispatch }: { state: AppState; dispatch: React.
             {c === 'EUR' ? 'EUR' : 'Local'}
           </button>
         ))}
-        {locked && (
-          <span className="absolute -bottom-5 left-0 text-xs text-slate-500 whitespace-nowrap">
-            Local display unavailable in cross-currency view
-          </span>
-        )}
       </div>
+      {locked && (
+        <span className="text-xs text-slate-500 leading-tight max-w-[12rem]">
+          Local display unavailable in cross-currency view
+        </span>
+      )}
     </div>
   );
 }
