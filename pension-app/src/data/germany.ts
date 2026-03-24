@@ -156,6 +156,35 @@ export const germany: CountryConfig = {
       retrievedDate: '2026-03',
       dataYear: 2026,
     },
+    // ── Cross-cutting source references ──────────────────────
+    {
+      parameter: 'medianWage + wagePercentiles',
+      source: 'Destatis Verdienststrukturerhebung (SES) 2022, adjusted to 2026; Eurostat earn_ses_monthly',
+      url: 'https://www.destatis.de/DE/Themen/Arbeit/Verdienste/Verdienststruktur/_inhalt.html',
+      retrievedDate: '2026-01',
+      dataYear: 2022,
+    },
+    {
+      parameter: 'oecdAverageWage',
+      source: 'OECD Taxing Wages 2025, Table I.1 (data year 2024)',
+      url: 'https://stats.oecd.org/Index.aspx?DataSetCode=AV_AN_WAGE',
+      retrievedDate: '2025-11',
+      dataYear: 2024,
+    },
+    {
+      parameter: 'minimumWage',
+      source: 'Mindestlohnkommission Beschluss 2024 — §1 Abs.2 MiLoG; BGBl. I 2024',
+      url: 'https://www.bmas.de/DE/Arbeit/Mindestlohn/mindestlohn.html',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'pensionTax (taxed as income)',
+      source: 'MISSOC Comparative Tables — Table V pension taxation 2025; specific law cited in pensionTax.note',
+      url: 'https://www.missoc.org/missoc-database/comparative-tables/',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
   ],
 
   selfEmployment: null,

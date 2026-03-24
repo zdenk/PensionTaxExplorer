@@ -4,13 +4,14 @@
  * Phase 3 (next): Charts
  */
 
-import { useReducer } from 'react';
+import { useReducer, useState } from 'react';
 import { appReducer, INITIAL_STATE } from './state/appReducer';
 import { COUNTRY_MAP } from './data/countryRegistry';
 import { computeScenario } from './utils/computeScenario';
 import { ControlsBar } from './components/ControlsBar';
 import { CountryCard } from './components/CountryCard';
 import { ComparisonCharts } from './components/ComparisonCharts';
+import { SourcesPage } from './components/SourcesPage';
 import type { ScenarioResult } from './types';
 
 /** Stable key for a (country, mode) card column. */
@@ -20,6 +21,7 @@ function cardKey(code: string, modeName: string | null) {
 
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
+  const [showSources, setShowSources] = useState(false);
 
   // Build card specs: one per (country, mode) pair, in country-selection order.
   // Each spec produces a separate column.
@@ -71,13 +73,30 @@ export default function App() {
           </h1>
           <p className="text-xs text-slate-500">OECD EU-22 · {new Date().getFullYear()} data</p>
         </div>
-        <div className="text-xs text-slate-600 font-mono">v2.0 Phase 2</div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSources(s => !s)}
+            className={`text-xs px-3 py-1 rounded border transition-colors ${
+              showSources
+                ? 'bg-sky-700 border-sky-500 text-white'
+                : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+            }`}
+          >
+            Sources
+          </button>
+          <span className="text-xs text-slate-600 font-mono">v2.0 Phase 2</span>
+        </div>
       </header>
 
-      {/* Controls */}
-      <ControlsBar state={state} dispatch={dispatch} />
+      {/* Controls — hidden when Sources page is open */}
+      {!showSources && <ControlsBar state={state} dispatch={dispatch} />}
 
-      {/* Country cards + comparison */}
+      {/* Sources page — replaces main content when open */}
+      {showSources ? (
+        <div className="flex-1 overflow-hidden">
+          <SourcesPage onClose={() => setShowSources(false)} />
+        </div>
+      ) : (
       <main className="flex-1 overflow-auto p-4">
         {state.selectedCountries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -119,6 +138,7 @@ export default function App() {
           />
         )}
       </main>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-slate-800 px-4 py-2 text-xs text-slate-600 shrink-0 flex justify-between">
