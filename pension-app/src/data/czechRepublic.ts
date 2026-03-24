@@ -91,6 +91,18 @@ const TAX_BRACKET_THRESHOLD = 3 * AW_2026; // 147,234 CZK/month
 const REDUCTION_THRESHOLD_1 = Math.round(0.44 * AW_2026); // 21,546 CZK (44% of AW)
 const REDUCTION_THRESHOLD_2 = 4 * AW_2026;                // 195,868 CZK
 
+/**
+ * SSC contribution ceiling (max. vyměřovací základ) 2026.
+ * Source: Zákon č. 589/1992 Sb. § 15a; Nařídení vlády 2026.
+ * Annual cap: 48 × AW = 48 × 48,967 = 2,350,416 CZK/year
+ * Monthly cap: 2,350,416 ÷ 12 = 195,868 CZK/month
+ * Applies to: pension insurance + sick-leave insurance (employee & employer).
+ * Health insurance (zdravotní pojištění) is NOT subject to this ceiling.
+ * Note: numerically identical to REDUCTION_THRESHOLD_2 (both = 4 × AW) because 48 ÷ 12 = 4.
+ */
+const SSC_ANNUAL_CAP   = 48 * AW_2026;          // 2,350,416 CZK/year
+const SSC_MONTHLY_CAP  = SSC_ANNUAL_CAP / 12;   // 195,868 CZK/month
+
 export const czechRepublic: CountryConfig = {
   // ─── Identity ─────────────────────────────────────────────────────────────
   code: 'CZ',
@@ -144,15 +156,15 @@ export const czechRepublic: CountryConfig = {
   //   - Health insurance (zdravotní pojištění):     4.5%  (no ceiling, paid via ZP schemes)
   //   Note: Czech health insurance is paid separately to health insurance companies,
   //   but it is an employee SSC for modelling purposes.
-  // Annual SSC ceiling (max. vyměřovací základ): 48 × AW = 48 × 48,967 = 2,350,416 CZK
-  // → Monthly equivalent: 195,868 CZK (= 2nd reduction threshold)
+  // Annual SSC ceiling (max. vyměřovací základ): SSC_ANNUAL_CAP = 48 × AW = 2,350,416 CZK
+  // → Monthly cap: SSC_MONTHLY_CAP = 195,868 CZK/month (pension + sick-leave; health uncapped)
   employeeSSC: {
-    ceiling: REDUCTION_THRESHOLD_2, // 195,868 CZK/month for pension; health is uncapped
+    ceiling: SSC_MONTHLY_CAP, // 195,868 CZK/month — Zákon č. 589/1992 Sb. § 15a
     components: [
       {
         label: 'Pension Insurance',
         rate: 0.065,
-        ceiling: REDUCTION_THRESHOLD_2,
+        ceiling: SSC_MONTHLY_CAP,
         pensionFunded: true,
       },
       {
@@ -160,7 +172,7 @@ export const czechRepublic: CountryConfig = {
         // Zákon č. 187/2006 Sb. (as amended by zákon č. 270/2023 Sb.)
         label: 'Sick Leave Insurance',
         rate: 0.006,
-        ceiling: REDUCTION_THRESHOLD_2,
+        ceiling: SSC_MONTHLY_CAP,
         pensionFunded: false,
       },
       {
@@ -185,26 +197,26 @@ export const czechRepublic: CountryConfig = {
   // Note: ČSSZ collects 21.5+2.1+1.2 = 24.8% in a single payment, but only the
   // 21.5% pension insurance portion is directed to the pension system.
   employerSSC: {
-    ceiling: REDUCTION_THRESHOLD_2,
+    ceiling: SSC_MONTHLY_CAP, // 195,868 CZK/month — Zákon č. 589/1992 Sb. § 15a
     components: [
       {
         label: 'Pension Insurance',
         rate: 0.215,
-        ceiling: REDUCTION_THRESHOLD_2,
+        ceiling: SSC_MONTHLY_CAP,
         pensionFunded: true,
       },
       {
         // Sick leave (nemocenské) — paid to ČSSZ but funds sickness benefits, not pensions
         label: 'Sick Leave Insurance',
         rate: 0.021,
-        ceiling: REDUCTION_THRESHOLD_2,
+        ceiling: SSC_MONTHLY_CAP,
         pensionFunded: false,
       },
       {
         // Příspěvek na státní politiku zaměstnanosti — labour market / unemployment fund
         label: 'State Employment Policy',
         rate: 0.012,
-        ceiling: REDUCTION_THRESHOLD_2,
+        ceiling: SSC_MONTHLY_CAP,
         pensionFunded: false,
       },
       {
@@ -444,6 +456,28 @@ export const czechRepublic: CountryConfig = {
       retrievedDate: '2026-01',
       dataYear: 2026,
     },
+    // ── Employer benefit / fringe-benefit exemptions ──────────────────────
+    {
+      parameter: 'employerBenefits.fringe_benefit',
+      source: 'Zákon č. 586/1992 Sb. §6(9)(g) — nepeněžní zaměstnanecké benefity (zákon č. 366/2022 Sb.)',
+      url: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-g',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'employerBenefits.meal_voucher',
+      source: 'Zákon č. 586/1992 Sb. §6(9)(b); Vyhláška č. 392/2024 Sb. (MPSV stravné 2025)',
+      url: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-b',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'employerBenefits.pension_contrib',
+      source: 'Zákon č. 586/1992 Sb. §6(9)(l); zákon č. 427/2011 Sb. (DPS); zákon č. 277/2009 Sb. (pojišťovnictví)',
+      url: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-l',
+      retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
   ],
 
   // Pension formula parameters fully populated for Phase 1
@@ -603,6 +637,105 @@ export const czechRepublic: CountryConfig = {
           annualIncomeLimit: PD_BAND2_LIMIT,
           fixedMonthlyTaxAdvance: PD_BAND2_TAX_ADVANCE,
         },
+      },
+    ],
+  },
+
+  // ─── Employer Benefits (Zaměstnanecké benefity) ──────────────────────────────
+  //
+  // Three tax-optimised compensation components that reduce the fiscal wedge
+  // relative to equivalent cash wages.  All three are exempt from employee income
+  // tax and SSC (within the statutory annual caps); the employer neither pays SSC
+  // on these amounts, making them cheaper per unit of employee value than gross pay.
+  //
+  // (a) Non-Monetary Benefits / Fringe Benefits — §6(9)(g) ZDP
+  //     Covers recreation, sport, culture, healthcare, education, transport subsidy, etc.
+  //     Annual exemption cap: 50% × AW = 48,967 × 0.50 = 24,484 CZK/year.
+  //     Source: Zákon č. 586/1992 Sb. §6(9)(g), as amended by zákon č. 366/2022 Sb.
+  //             (reform effective 1 Jan 2024 capped the previously unlimited exemption).
+  //
+  // (b) Cash Meal Allowance (Stravenkový paušál) — §6(9)(b) ZDP
+  //     The paušál replaces paper meal vouchers with a direct cash transfer.
+  //     Exempt per working day up to 70% of the highest statutory meal reimbursement
+  //     rate for journeys over 12 hours.  MPSV Vyhláška č. 392/2024 Sb. sets the
+  //     12-h rate at 166 CZK → 70% = 116.20 CZK/day (2026 estimate).
+  //     23 working days/month → ~2,673 CZK/month; model default: 2,600 CZK/month.
+  //     Source: Zákon č. 586/1992 Sb. §6(9)(b); Vyhláška č. 392/2024 Sb.
+  //
+  // (c) Pension & Life Insurance Contributions — §6(9)(l) ZDP
+  //     Employer contributions to DPS (doplňkové penzijní spoření) and/or
+  //     capitalotvorné životní pojištění are exempt from income tax and SSC.
+  //     Combined annual cap: 50,000 CZK/year = 4,167 CZK/month.
+  //     Flows directly into the employee's DPS account — locked until age 60
+  //     or statutory retirement.  Model accumulates at Pillar-2 real return (3.0%
+  //     real net-of-fees, constant prices) and annuitises over the retirement period.
+  //     Source: Zákon č. 586/1992 Sb. §6(9)(l); zákon č. 427/2011 Sb. (DPS Act);
+  //             zákon č. 277/2009 Sb. (Insurance Act).
+  employerBenefits: {
+    available: true,
+    benefits: [
+      {
+        id: 'fringe_benefit',
+        label: 'Non-Monetary Benefits (Fringe)',
+        labelLocal: 'Zaměstnanecké benefity',
+        destination: 'net_pay',
+        defaultEnabled: false,
+        defaultAmountMonthly: 2_000,
+        minAmount: 0,
+        maxAmount: Math.round(Math.round(0.5 * AW_2026) / 12),  // 2,040 CZK/mo — monthly exempt cap
+        stepAmount: 100,
+        // 50% × AW_2026 per year — §6(9)(g) ZDP (zákon č. 366/2022 Sb., eff. 2024)
+        annualExemptCap: Math.round(0.5 * AW_2026),  // 24,484 CZK/year
+        legalBasis: '§6(9)(g) zákon č. 586/1992 Sb.',
+        sourceNote:
+          'Zákon č. 586/1992 Sb. §6(9)(g) (ve znění zákon. č. 366/2022 Sb., účinné 2024) — ' +
+          'nepeněžní plnění poskytovaná zaměstnavatelem (rekreace, sport, kultura, zdraví, ' +
+          'vzdělání, doprava) jsou osvobozena od daně z příjmů a odvozeny od pojistných ' +
+          'odvodů do výše 50 % průměrné mzdy ročně (2026: 24 484 CZK/rok).',
+        sourceUrl: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-g',
+      },
+      {
+        id: 'meal_voucher',
+        label: 'Meal Voucher / Cash Meal Allowance',
+        labelLocal: 'Stravenkový paušál',
+        destination: 'net_pay',
+        defaultEnabled: false,
+        defaultAmountMonthly: 2_600,
+        minAmount: 0,
+        maxAmount: Math.round(32_054 / 12),  // 2,671 CZK/mo — monthly exempt cap
+        stepAmount: 50,
+        // 70% × 166 CZK (12h rate 2026) × 276 working days/year ≈ 32,054 CZK/year
+        annualExemptCap: 32_054,
+        legalBasis: '§6(9)(b) zákon č. 586/1992 Sb.',
+        sourceNote:
+          'Zákon č. 586/1992 Sb. §6(9)(b) — stravenkový paušál osvobozen od daně ' +
+          'z příjmů fyzických osob a odvozů na pojistné do výše 70 % stravného při ' +
+          'pracovní cestě trvající déle než 12 hodin (vyhláška č. 392/2024 Sb.: 166 CZK/den ' +
+          '→ 70% = 116,20 CZK/den). Model: 23 pracovních dní/měsíc → ~2 673 CZK/měsíc; ' +
+          'výchozí hodnota 2 600 CZK/měsíc.',
+        sourceUrl: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-b',
+      },
+      {
+        id: 'pension_contrib',
+        label: 'Pension & Life Insurance Contributions',
+        labelLocal: 'Příspěvek na penzijní / životní pojištění',
+        destination: 'third_pillar',
+        defaultEnabled: false,
+        defaultAmountMonthly: 1_000,
+        minAmount: 0,
+        maxAmount: 4_100,  // stays within 50,000 CZK/year cap (4,167/month)
+        stepAmount: 100,
+        // Combined cap for DPS + life insurance: 50,000 CZK/year — §6(9)(l) ZDP
+        annualExemptCap: 50_000,
+        legalBasis: '§6(9)(l) zákon č. 586/1992 Sb.',
+        sourceNote:
+          'Zákon č. 586/1992 Sb. §6(9)(l) — příspěvek zaměstnavatele na doplňkové ' +
+          'penzijní spoření (zákon č. 427/2011 Sb.) nebo na soukromé životní pojištění ' +
+          '(zákon č. 277/2009 Sb.) je osvobozen od daně z příjmů a pojistných odvodů ' +
+          'do celkové výše 50 000 CZK/rok. Prostředky jsou vázány do 60 let věku / ' +
+          'důchodového věku. Model akumuluje stejnou reálnou výnosovou mírou jako ' +
+          'II. pilíř (3,0 % reálně po poplatcích, stálé ceny).',
+        sourceUrl: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-l',
       },
     ],
   },

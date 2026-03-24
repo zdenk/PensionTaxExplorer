@@ -1,5 +1,7 @@
 # EU27 Pension & Tax Burden Explorer
 
+> 🚧 **Work in progress — calculation errors may be present.** This project is under active development. Country parameters, tax formulas, SSC rates, and pension calculations have not been fully audited and may contain mistakes. Results should not be treated as accurate or complete. If you spot an error, please [open an issue or submit a pull request](https://github.com/zdenk/PensionTaxExplorer/issues).
+
 An interactive, fully client-side single-page application for exploring and comparing pension outcomes and tax burdens across the **22 EU OECD member states**. No backend required — all country data, tax tables, SSC rates and pension formula parameters are encoded as static TypeScript and computed entirely in the browser. For information and learning purposes only, not to be used for any calculations of personal finance estimations. Made with AI agent.
 
 **Live demo:** https://zdenk.github.io/PensionTaxExplorer/
@@ -9,6 +11,8 @@ An interactive, fully client-side single-page application for exploring and comp
 ## ⚠️ Disclaimers
 
 > **This tool is for illustrative and educational purposes only. It is not financial, tax, legal, or actuarial advice. Do not make retirement or financial planning decisions based on its outputs.**
+
+> 🚧 **Work in progress — calculation errors may be present.** This project is under active development. Country parameters, tax formulas, SSC rates, and pension calculations have not been fully audited and may contain mistakes. Results should not be treated as accurate or complete. If you spot an error, please open an issue or submit a pull request.
 
 ### Illustrative model — not a personal pension forecast
 All calculations model a stylised, standard employee and should be read as order-of-magnitude illustrations of how different countries' statutory systems compare structurally. Individual outcomes will differ materially based on personal circumstances, actual career history, future legislative changes, and employer arrangements.
@@ -276,6 +280,91 @@ The engine currently uses `careerYears = retirementAge − careerStartAge` as a 
 
 
 > These rules are subject to change and vary significantly in duration, base amount, and eligibility conditions. Sources: MISSOC Comparative Tables, OECD *Pensions at a Glance*, national social security legislation. The Czech Republic entries have been verified in detail; entries for all other countries should be independently confirmed before use.
+
+---
+
+## Employer Tax-Optimised Benefits (not modelled — except Czech Republic)
+
+Most EU countries allow employers to provide certain compensation components — meal allowances, non-monetary welfare, and contributions to occupational/supplementary pension schemes — that are partially or fully exempt from income tax and/or social security contributions. These benefits create a meaningful wedge between gross payroll cost and employee net value relative to equivalent cash pay. To compare countries with Czech Republic, exclude the Tax-Optimised benefits.
+
+### Implemented: Czech Republic
+
+Three benefit components are fully modelled for CZ, each togglable via a slider in the UI:
+
+| Benefit | Czech name | Legal basis | Exemption cap (2026) | Destination |
+|---|---|---|---|---|
+| **Non-monetary / fringe benefits** — recreation, sport, culture, healthcare, education, transport | Zaměstnanecké benefity | §6(9)(g) zákon č. 586/1992 Sb. (ve znění zákon. č. 366/2022 Sb., účinné 2024) | ½ × AW/year ≈ **24,484 CZK/year** (≈ 2,040 CZK/month) | Employee net pay (tax & SSC exempt) |
+| **Cash meal allowance** | Stravenkový paušál | §6(9)(b) zákon č. 586/1992 Sb.; Vyhláška č. 392/2024 Sb. | 70 % × 166 CZK/day × 276 days ≈ **32,054 CZK/year** (≈ 2,671 CZK/month) | Employee net pay (tax & SSC exempt) |
+| **Employer pension & life-insurance contributions** | Příspěvek na DPS / životní pojištění | §6(9)(l) zákon č. 586/1992 Sb.; zákon č. 427/2011 Sb. (DPS) | **50,000 CZK/year** combined (≈ 4,167 CZK/month) | Locked third-pillar account — accumulated at 3 % real return and annuitised at retirement |
+
+All three are exempt from **both** employee income tax and employee/employer SSC. The model caps the slider at the statutory annual exemption limit and assumes users remain within it.
+
+---
+
+### Not yet implemented: EU-22 country equivalents
+
+The table below maps the three benefit categories to their nearest statutory equivalent in every other country covered by the app. None of these are currently modelled.
+
+#### Meal voucher / food allowance
+
+| Country | Scheme | Employer-exempt amount (approx. 2026) | Legal basis |
+|---|---|---|---|
+| 🇫🇷 France | *Tickets Restaurant* — employer co-pays 50–60 % | ≤ €7.18/voucher × ~22 days ≈ **€158/month** (employer portion, SSC & IT exempt) | URSSAF circular; CGI Art. 81-19° |
+| 🇧🇪 Belgium | *Chèques-repas / Maaltijdcheques* — employer pays max €6.91/day, employee ≥ €1.09 | **€6.91/day × ~22 days ≈ €152/month**, fully exempt SSC + IT | CCT n°90; Loi sur les MCR |
+| 🇮🇹 Italy | *Buoni pasto / Ticket restaurant* | **€8/day** (electronic) or €4/day (paper), IRPEF + SSC exempt | TUIR Art. 51(2)(c); D.Lgs. 216/2023 |
+| 🇪🇸 Spain | *Tickets Restaurante / dieta manutención* | **€11/day**, IRPF + SSC exempt | Reglamento IRPF Art. 45; ET |
+| 🇸🇰 Slovakia | *Stravné lístky* — employer must give ≥ 55 % of ticket value | Employer portion exempt SSC + IT within statutory meal rates | Zákonník práce §152; ZDP |
+| 🇩🇪 Germany | *Essenszuschuss* via canteen or luncheon voucher | **€7.23/meal** (Sachbezugswert + €3.10 top-up) exempt IT + SSC | §8(2) EStG; SvEV 2026 |
+| 🇷🇴 Romania | *Tichete de masă* | **≈ €20/working day** (indexed annually), exempt IT + SSC | Legea nr. 165/2018 |
+| 🇭🇺 Hungary | *SZÉP Kártya – Vendéglátás* sub-account | **150,000 HUF/year** at preferential rate (15 % szja, no SSC vs normal marginal rates) | Szja törvény Art. 71 |
+| 🇳🇱 Netherlands | Absorbed within *Werkkostenregeling* (WKR) free allowance | Employer's **1.7 % payroll free space** covers all non-cash benefits including meals | Wet LB 1964 Art. 31a |
+| 🇵🇱 Poland | *ZFŚS* works-fund vouchers | **≤ 450 PLN/year** IT-exempt if disbursed from social fund | Ustawa o PIT Art. 21(1)(67) |
+| 🇫🇮 Finland | *Lounasetu* (subsidised employer lunch) | Subsidised meals within **€8.80–€12.10/meal** statutory bracket (2026) — exempt | TVL § 64 |
+
+#### Non-monetary / welfare fringe benefits
+
+| Country | Scheme | Exempt cap (approx. 2026) | Legal basis |
+|---|---|---|---|
+| 🇳🇱 Netherlands | *Werkkostenregeling (WKR)* — broad free-allowance regime for all non-cash benefits | **1.7 %** of first €400k payroll + **1.18 %** above; excess taxed at 80 % *eindheffing* | Wet LB 1964 Art. 31a |
+| 🇩🇪 Germany | *Sachbezugsfreigrenze* — any non-cash perk (gym, transport, etc.) | **€50/month** (€600/year) per employee, IT + SSC exempt | §8(2) EStG (Freigrenze) |
+| 🇸🇪 Sweden | *Friskvårdsbidrag* — employer sport / wellness contribution | **5,000 SEK/year** (≈ €440) per employee, fully tax-free | Inkomstskattelagen (IL) 11 kap. 47§ |
+| 🇮🇪 Ireland | *Small Benefits Exemption* — non-cash awards only (max 2/year) | **€1,500/year** total, fully exempt IT + PRSI + USC | TCA 1997 s.112B (Finance Act 2024) |
+| 🇧🇪 Belgium | *Eco-chèques* (ecological spending vouchers) | **€250/year** per employee, exempt ONSS + IT | CCT n°98; AR 2009 |
+| 🇧🇪 Belgium | *Chèques sport/culture* | **€100/quarter** (€400/year), exempt ONSS + IT | CCT n°90bis |
+| 🇫🇷 France | *Œuvres sociales du CSE* — holiday vouchers (ANCV), culture, CESU | **≈ 5 % of payroll** (≈ €5,400/year per employee at AW), exempt SSC | Art. L.2312-77 C. trav.; URSSAF circular 2026 |
+| 🇫🇮 Finland | *Liikuntaetu* — sport and culture employer benefit | **€400/year** per employee, IT + SSC exempt | TVL §§ 69, 69b |
+| 🇦🇹 Austria | *Zukunftssicherung* — group life/health/accident insurance premium | **€300/employee/year** exempt IT + SSC | EStG §3(1)(15)(a) |
+| 🇮🇹 Italy | *Welfare aziendale* / fringe benefits (broad basket) | **€258.23/year** standard (raised to **€1,000/year** for employees with a dependent child, D.Lgs. 216/2023) | TUIR Art. 51(3) |
+| 🇭🇺 Hungary | *SZÉP Kártya – Szálláshely* (accommodation) + *Szabadidő* (leisure) | **225,000 / 75,000 HUF/year** respectively at SZJA-preferential rate | Szja törvény Art. 71 |
+| 🇩🇰 Denmark | Various *personalegoder* — transport pass, broadband, fitness | **≤ DKK 7,400/year** standard net limit before excess is taxed as wages | LL §16 |
+| 🇱🇺 Luxembourg | *Avantages en nature* — meals, sport, culture | Up to **€3,000/year** IT-exempt via employer welfare schemes | LIR Art. 95 |
+
+#### Employer pension & life-insurance contributions
+
+| Country | Vehicle / scheme | Annual exempt cap (approx. 2026) | Legal basis |
+|---|---|---|---|
+| 🇩🇪 Germany | *bAV* — Direktversicherung / Pensionskasse / Pensionsfonds | **8 % of BBG** = **€8,112/year**, IT + SSC exempt; additional **€1,800/year** IT-only exempt | §3 Nr.63 EStG; §1 BetrAVG |
+| 🇳🇱 Netherlands | *Pensioen* — collective occupational (Witteveenkader) | No EUR cap; limited by **1.875 % accrual/year × career average**; contributions fully IT + SSC exempt | Wet IB 2001 Art. 1.7; Wet LB 1964 Art. 19a |
+| 🇫🇷 France | *PER collectif (PERECO)* employer abondement | **16 % of PASS** ≈ **€9,664/year** IT-exempt; employer portion SSC-exempt to the same ceiling | CGI Art. 163 quartervigies; CSS L.137-16 |
+| 🇧🇪 Belgium | *Assurance-groupe / 2e pijler ELP* | No fixed cap; limited by the **"80 % final salary"** ceiling rule; contributions at 4.4 % long-term saving tax (vs marginal IT + SSC) | WAP; WIB 92 Art. 52 |
+| 🇸🇪 Sweden | *Tjänstepension* (ITP / SAF-LO / ITPK) | No employee IT cap (exempt until drawdown); employer pays *särskild löneskatt* **24.26 %** instead of full employer SSC **31.42 %** | IL 28 kap.; SFS 1990:659 |
+| 🇮🇪 Ireland | *Occupational Pension Scheme* employer contributions | **No cap** on employer contributions (IT + PRSI exempt); employee AVC relief: age-banded 15–40 % of earnings | TCA 1997 Part 30 |
+| 🇦🇹 Austria | *BMSVG* (mandatory 1.53 % "Abfertigung Neu") + *Pensionskasse* / *BKV* | Mandatory BMSVG 1.53 % fully exempt; voluntary Pensionskasse contributions exempt to **€300/year** general fringe cap — additional via EStG §26(7) | EStG §3(1)(15)(a); BMSVG §6 |
+| 🇮🇹 Italy | *Fondi pensione complementare (FIP)* | **€5,164.57/year** combined employer + employee contributions, IRPEF + SSC exempt | D.Lgs. 252/2005 Art. 8(4) |
+| 🇸🇰 Slovakia | *DDS — Doplnkové dôchodkové sporenie* | Employer contribution SSC-exempt (no cap); IT-exempt up to **6 % of gross salary** | Zákon č. 650/2004 Z.z.; ZDP §5(7)(c) |
+| 🇵🇱 Poland | *PPE* (voluntary) + *PPK* (mandatory) | PPE employer contribution up to **7 % of salary** IT-exempt; PPK mandatory portion IT-exempt (SSC not exempt) | Ustawa o PPK; Ustawa o PPE |
+| 🇭🇺 Hungary | *Önkéntes nyugdíjpénztár* (voluntary pension fund) | Employer contribution up to **≈ 50,000 HUF/year** IT-exempt | Szja törvény §7(1) |
+| 🇩🇰 Denmark | *Arbejdsmarkedspension* — sector mandatory occupational | All occupational pension contributions deductible / IT-exempt until drawdown | PBL §§ 19, 41 |
+| 🇫🇮 Finland | *TyEL* supplementary + voluntary employer pension insurance | TyEL contributions fully IT + SSC exempt; voluntary additions via *henkilövakuutus* | TVL §§ 96a, 98 |
+| 🇬🇷 Greece | *Ταμεία επαγγελματικής ασφάλισης (ΤΕΑ)* | Employer contributions up to **6 % of pensionable salary** IT-exempt | Law 3029/2002; KFE Art. 3 |
+| 🇵🇹 Portugal | *PPR / Planos de pensões* employer contributions | Up to **€1,800/year** (employee) IT-exempt via Art. 21 EBF; employer side deductible (no personal IT cap) | EBF Art. 21; CIRS Art. 78-A |
+| 🇱🇻 Latvia | *Privātie pensiju fondi* / 3rd pillar | Employer contributions IT-exempt up to **10 % of gross salary** (≤ €4,000/year) | Likums par IIN Art. 10 |
+| 🇱🇹 Lithuania | *Papildomos pensijų kaupimas* (voluntary 3rd pillar) | Employer contributions IT-exempt up to **25 % of gross** (max €75/month) | GPM įstatymas Art. 17 §1(19) |
+| 🇪🇪 Estonia | *Täiendav pensionikindlustus* (voluntary 3rd pillar) | Employer contributions IT-exempt up to **15 % of gross salary** | TMS § 28 |
+| 🇸🇮 Slovenia | *Pokojninsko dodatno zavarovanje (PZ)* | Employer contributions IT-exempt up to **5.844 % of gross** (≤ €2,984/year) | ZDoh-2 Art. 117 |
+| 🇱🇺 Luxembourg | *Régime complémentaire de pension (RCP)* | Employer contributions IT-exempt with no fixed monetary cap (subject to "définitivité des droits" rules) | LIR Art. 111; Loi RCP 1999 |
+
+> **Implementation note:** The `EmployerBenefitDef` type in `types.ts` is designed to be country-agnostic. Adding a country's benefits requires populating an `employerBenefits` block in the country data file — no engine changes are needed. Germany (bAV, €8,112 cap), the Netherlands (WKR, 1.7 % payroll), France (CSE welfare + PER), and Slovakia (DDS, 6 % of gross) represent the highest-impact additions relative to a standard AW earner.
 
 ---
 

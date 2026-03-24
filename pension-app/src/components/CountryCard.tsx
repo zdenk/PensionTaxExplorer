@@ -4,7 +4,7 @@
  * Phase 3: Graph1_CareerTimeline + Graph2_Accumulation
  */
 
-import type { CountryConfig, AppState, ScenarioResult, SelfEmploymentMode } from '../types';
+import type { CountryConfig, AppState, ScenarioResult, SelfEmploymentMode, EmployerBenefitDef } from '../types';
 import type { AppAction } from '../state/appReducer';
 import { MAX_CARDS, totalActiveCards } from '../state/appReducer';
 import { FLAG } from '../data/countryRegistry';
@@ -17,6 +17,7 @@ import { Graph2_Accumulation } from './Graph2_Accumulation';
 import { WagePieChart } from './Graph2_Accumulation';
 import { Graph3_ReplacementRateCurve } from './Graph3_ReplacementRateCurve';
 import { WageDistributionChart } from './WageDistributionChart';
+import { useState } from 'react';
 
 interface Props {
   country: CountryConfig;
@@ -255,6 +256,246 @@ function OSVCBanner({
 }
 
 
+// ─── CZ Employer Benefits Panel ──────────────────────────────────────────────────────
+
+function BenefitRow({
+  def,
+  sel,
+  onToggle,
+  onAmount,
+}: {
+  def: EmployerBenefitDef;
+  sel: { enabled: boolean; amountMonthly: number };
+  onToggle: () => void;
+  onAmount: (v: number) => void;
+}) {
+  const destLabel = def.destination === 'net_pay' ? '\u2192 net pay' : '\u2192 3rd pillar (locked)';
+  const destColor = def.destination === 'net_pay' ? 'text-sky-400' : 'text-violet-400';
+
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 transition-colors ${
+      sel.enabled
+        ? def.destination === 'net_pay'
+          ? 'border-sky-700/60 bg-sky-950/30'
+          : 'border-violet-700/60 bg-violet-950/30'
+        : 'border-slate-700/50 bg-slate-800/40'
+    }`}>
+      {/* Toggle row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={onToggle}
+            title={sel.enabled ? 'Click to disable' : 'Click to enable'}
+            className={`flex-none w-8 h-4.5 rounded-full border transition-colors px-0.5 flex items-center ${
+              sel.enabled
+                ? def.destination === 'net_pay'
+                  ? 'bg-sky-600 border-sky-500'
+                  : 'bg-violet-600 border-violet-500'
+                : 'bg-slate-700 border-slate-600'
+            }`}
+            style={{ minWidth: '2rem', height: '1.1rem' }}
+          >
+            <span className={`inline-block w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${
+              sel.enabled ? 'translate-x-3.5' : 'translate-x-0'
+            }`}
+              style={{ width: '0.75rem', height: '0.75rem' }}
+            />
+          </button>
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-slate-200 leading-tight">{def.label}</div>
+            <div className="text-xs text-slate-500 leading-tight">{def.labelLocal}</div>
+          </div>
+        </div>
+        <span className={`text-xs flex-none ${destColor}`}>{destLabel}</span>
+      </div>
+
+      {/* Amount slider — only when enabled */}
+      {sel.enabled && (
+        <div className="mt-2.5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-slate-500">
+              {def.legalBasis}
+              {def.annualExemptCap != null && (
+                <span className="text-slate-600">
+                  {' '}— cap {(def.annualExemptCap / 12).toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/mo
+                </span>
+              )}
+            </span>
+            <span className={`text-sm font-mono font-semibold ${
+              def.destination === 'net_pay' ? 'text-sky-300' : 'text-violet-300'
+            }`}>
+              {sel.amountMonthly.toLocaleString('cs-CZ')} CZK/mo
+            </span>
+          </div>
+          <input
+            type="range"
+            min={def.minAmount}
+            max={def.maxAmount}
+            step={def.stepAmount}
+            value={Math.min(sel.amountMonthly, def.maxAmount)}
+            onChange={e => onAmount(Math.min(Math.max(Number(e.target.value), def.minAmount), def.maxAmount))}
+            className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
+              def.destination === 'net_pay' ? 'accent-sky-400' : 'accent-violet-400'
+            }`}
+          />
+          <div className="flex justify-between text-[10px] text-slate-600 mt-0.5">
+            <span>{def.minAmount.toLocaleString('cs-CZ')} CZK</span>
+            <span className={sel.amountMonthly >= def.maxAmount ? (def.destination === 'net_pay' ? 'text-sky-500' : 'text-violet-500') : ''}>
+              max {def.maxAmount.toLocaleString('cs-CZ')} CZK
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Source note — collapsed by default */}
+      {sel.enabled && (
+        <details className="mt-1.5">
+          <summary className="text-[10px] text-slate-600 cursor-pointer select-none hover:text-slate-500">
+            Source / legal basis
+          </summary>
+          <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+            {def.sourceNote}{' '}
+            <a href={def.sourceUrl} target="_blank" rel="noreferrer"
+              className="text-sky-600 hover:text-sky-400 underline">
+              zakonyprolidi.cz ↗
+            </a>
+          </p>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function CZBenefitsPanel({
+  country,
+  result,
+  appState,
+  dispatch,
+}: {
+  country: CountryConfig;
+  result: ScenarioResult;
+  appState: AppState;
+  dispatch: React.Dispatch<AppAction>;
+}) {
+  const benefitsDef = country.employerBenefits;
+  if (!benefitsDef?.available) return null;
+
+  const sels = appState.czBenefits;
+  const br = result.czBenefitResult;
+  const [open, setOpen] = useState(true);
+
+  const activeCount = benefitsDef.benefits.filter(d => sels[d.id].enabled).length;
+  const totalCount  = benefitsDef.benefits.length;
+
+  return (
+    <div className="mt-4">
+      {/* ── Collapsible header ── */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 text-left group"
+      >
+        <span className="text-slate-500 text-[10px] select-none">{open ? '▼' : '▶'}</span>
+        <h3 className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-2 flex-1">
+          Employer Benefits
+          <span className="text-slate-600 normal-case">
+            — Zaměstnanecké benefity §§6(9) ZDP
+          </span>
+        </h3>
+        {!open && activeCount > 0 && (
+          <span className="ml-auto text-[10px] bg-sky-800/60 text-sky-300 px-2 py-0.5 rounded-full">
+            {activeCount}/{totalCount} active
+          </span>
+        )}
+        {!open && activeCount === 0 && (
+          <span className="ml-auto text-[10px] text-slate-600">all off</span>
+        )}
+      </button>
+
+      {open && (
+      <>
+      <div className="text-[10px] text-slate-600 mb-2 mt-1">
+        Tax- and SSC-exempt compensation components. Toggle to include in scenario.
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {benefitsDef.benefits.map(def => (
+          <BenefitRow
+            key={def.id}
+            def={def}
+            sel={sels[def.id]}
+            onToggle={() =>
+              dispatch({
+                type: 'SET_CZ_BENEFIT',
+                id: def.id,
+                enabled: !sels[def.id].enabled,
+              })
+            }
+            onAmount={v =>
+              dispatch({
+                type: 'SET_CZ_BENEFIT',
+                id: def.id,
+                amount: v,
+              })
+            }
+          />
+        ))}
+      </div>
+
+      {/* DPS / 3rd-pillar projection callout */}
+      {br && br.pensionContribMonthly > 0 && (
+        <div className="mt-2 rounded-lg border border-violet-700/40 bg-violet-950/20 px-3 py-2.5 text-xs">
+          <div className="text-violet-300 font-semibold mb-1">
+            DPS projection — §6(9)(l) ZDP
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
+            <span>Monthly contribution</span>
+            <span className="text-right font-mono text-violet-200">
+              {br.pensionContribMonthly.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK
+            </span>
+            <span>Real return (Pillar-2 rate)</span>
+            <span className="text-right font-mono text-violet-200">
+              {(br.dpsReturnRate * 100).toFixed(1)}%
+            </span>
+            <span>Pot at retirement</span>
+            <span className="text-right font-mono text-violet-200">
+              {Math.round(br.dpsPotAtRetirement).toLocaleString('cs-CZ')} CZK
+            </span>
+            <span>Monthly DPS annuity</span>
+            <span className="text-right font-mono text-violet-300 font-semibold">
+              {Math.round(br.dpsMonthlyPension).toLocaleString('cs-CZ')} CZK
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-600 mt-1.5">
+            Accumulated in real terms at {(br.dpsReturnRate * 100).toFixed(1)}% p.a. net-of-fees (constant prices).
+            Annuitised over retirement duration. Contributions locked until retirement.
+            Source: zákon č. 427/2011 Sb.
+          </p>
+        </div>
+      )}
+
+      {/* Net benefit summary */}
+      {br && br.totalNetAdd > 0 && (
+        <div className="mt-2 rounded-lg border border-sky-700/40 bg-sky-950/20 px-3 py-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-sky-300 font-semibold">
+              Net-pay equivalent (tax-free)
+            </span>
+            <span className="font-mono text-sky-200 font-semibold">
+              +{br.totalNetAdd.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/mo
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-600 mt-0.5">
+            Fringe benefits + meal allowance flow directly into take-home with no income
+            tax or SSC deductions on either side.
+          </p>
+        </div>
+      )}
+      </>
+      )}
+    </div>
+  );
+}
+
 export function CountryCard({ country, result, selfEmploymentModeName, appState, dispatch }: Props) {
   const currency = appState.currency;
   const retirementAge =
@@ -289,6 +530,16 @@ export function CountryCard({ country, result, selfEmploymentModeName, appState,
         grossMonthly={result.resolvedWage.grossLocal}
       />
 
+      {/* ── Employer Benefits panel — only for standard employee mode ── */}
+      {country.code === 'CZ' && selfEmploymentModeName === null && (
+        <CZBenefitsPanel
+          country={country}
+          result={result}
+          appState={appState}
+          dispatch={dispatch}
+        />
+      )}
+
       <WageDistributionChart
         country={country}
         selectedWageLocal={result.resolvedWage.grossLocal}
@@ -301,9 +552,10 @@ export function CountryCard({ country, result, selfEmploymentModeName, appState,
         currency={currency}
         countryCurrency={country.currency}
         eurExchangeRate={country.eurExchangeRate}
+        czBenefitResult={result.czBenefitResult}
       />
 
-      <EffectiveRates result={result} />
+      <EffectiveRates result={result} czBenefitResult={result.czBenefitResult} />
 
       <PensionRow
         result={result}

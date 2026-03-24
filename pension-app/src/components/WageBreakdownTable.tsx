@@ -10,7 +10,7 @@
  *   Net Take-Home              ← green, bold
  */
 
-import type { ScenarioResult } from '../types';
+import type { ScenarioResult, CZBenefitResult } from '../types';
 import { displayAmount, formatPct } from '../utils/formatCurrency';
 
 interface Props {
@@ -24,22 +24,33 @@ interface Row {
   label: string;
   amount: number;
   pctOfGross?: number;
-  style: 'primary' | 'separator' | 'er-ssc' | 'ee-ssc' | 'tax' | 'net' | 'sub';
+  style: 'primary' | 'separator' | 'er-ssc' | 'ee-ssc' | 'tax' | 'net' | 'sub' | 'benefit' | 'pillar3' | 'net-eff';
   indent?: boolean;
+  /** Optional secondary line shown below the main label in smaller text */
+  sublabel?: string;
 }
 
-function buildRows(result: ScenarioResult, isOSVC: boolean, isPausalniDan: boolean): Row[] {
+function buildRows(
+  result: ScenarioResult,
+  isOSVC: boolean,
+  isPausalniDan: boolean,
+  benefits?: CZBenefitResult,
+): Row[] {
   const gross = result.resolvedWage.grossLocal;
   const { sscResult, taxResult } = result;
   const netTakeHome = gross - taxResult.incomeTaxMonthly - sscResult.employeeTotal;
+
+  // Total employer outlay = gross + ER SSC + any employer-funded benefits
+  const benefitErCost = (benefits?.totalNetAdd ?? 0) + (benefits?.pensionContribMonthly ?? 0);
+  const totalEmployerCostDisplayed = sscResult.totalEmployerCost + benefitErCost;
 
   const rows: Row[] = [];
 
   // ─── Total employer cost (or Monthly Profit for OSVČ) ──────────────────────
   rows.push({
     label: isOSVC ? 'Monthly Profit' : 'Total Employer Cost',
-    amount: sscResult.totalEmployerCost,
-    pctOfGross: gross > 0 ? sscResult.totalEmployerCost / gross : 0,
+    amount: totalEmployerCostDisplayed,
+    pctOfGross: gross > 0 ? totalEmployerCostDisplayed / gross : 0,
     style: 'primary',
   });
 
@@ -52,6 +63,40 @@ function buildRows(result: ScenarioResult, isOSVC: boolean, isPausalniDan: boole
       style: 'er-ssc',
       indent: true,
     });
+  }
+
+  // ─── CZ employer benefits (shown alongside employer SSC) ──────────────────
+  if (benefits && !isOSVC) {
+    if (benefits.fringeBenefitMonthly > 0) {
+      rows.push({
+        label: '  Fringe Benefits',
+        amount: benefits.fringeBenefitMonthly,
+        pctOfGross: gross > 0 ? benefits.fringeBenefitMonthly / gross : 0,
+        style: 'benefit',
+        indent: true,
+        sublabel: 'Zaměstnanecké benefity — §6(9)(g) ZDP — tax & SSC exempt → benefity',
+      });
+    }
+    if (benefits.mealVoucherMonthly > 0) {
+      rows.push({
+        label: '  Meal Allowance',
+        amount: benefits.mealVoucherMonthly,
+        pctOfGross: gross > 0 ? benefits.mealVoucherMonthly / gross : 0,
+        style: 'benefit',
+        indent: true,
+        sublabel: 'Stravenkový paušál — §6(9)(b) ZDP — tax & SSC exempt → stravenky',
+      });
+    }
+    if (benefits.pensionContribMonthly > 0) {
+      rows.push({
+        label: '  Pension Contribution (DPS)',
+        amount: benefits.pensionContribMonthly,
+        pctOfGross: gross > 0 ? benefits.pensionContribMonthly / gross : 0,
+        style: 'pillar3',
+        indent: true,
+        sublabel: 'Příspěvek do DPS — §6(9)(l) ZDP — tax & SSC exempt → locked (3rd pillar)',
+      });
+    }
   }
 
   // ─── Gross wage boundary ─────────────────────────────────────────────────
@@ -82,11 +127,50 @@ function buildRows(result: ScenarioResult, isOSVC: boolean, isPausalniDan: boole
 
   // ─── Net take-home ───────────────────────────────────────────────────────
   rows.push({
-    label: 'Net Take-Home',
+    label: benefits?.totalNetAdd ? 'Net Cash Take-Home' : 'Net Take-Home',
     amount: netTakeHome,
     pctOfGross: gross > 0 ? netTakeHome / gross : 0,
     style: 'net',
   });
+
+  // ─── CZ net-pay benefit additions ──────────────────────────────────
+  if (benefits && benefits.totalNetAdd > 0) {
+    if (benefits.fringeBenefitMonthly > 0) {
+      rows.push({
+        label: '  + Fringe Benefits (benefity)',
+        amount: benefits.fringeBenefitMonthly,
+        pctOfGross: gross > 0 ? benefits.fringeBenefitMonthly / gross : 0,
+        style: 'benefit',
+        indent: true,
+      });
+    }
+    if (benefits.mealVoucherMonthly > 0) {
+      rows.push({
+        label: '  + Meal Allowance (stravenky)',
+        amount: benefits.mealVoucherMonthly,
+        pctOfGross: gross > 0 ? benefits.mealVoucherMonthly / gross : 0,
+        style: 'benefit',
+        indent: true,
+      });
+    }
+    rows.push({
+      label: 'Effective Net Take-Home',
+      amount: netTakeHome + benefits.totalNetAdd,
+      pctOfGross: gross > 0 ? (netTakeHome + benefits.totalNetAdd) / gross : 0,
+      style: 'net-eff',
+    });
+  }
+
+  // ─── DPS pension contribution (informational, 3rd pillar) ────────────────
+  if (benefits && benefits.pensionContribMonthly > 0) {
+    rows.push({
+      label: '  → DPS (3rd Pillar Pension)',
+      amount: benefits.pensionContribMonthly,
+      pctOfGross: gross > 0 ? benefits.pensionContribMonthly / gross : 0,
+      style: 'pillar3',
+      indent: true,
+    });
+  }
 
   return rows;
 }
@@ -99,6 +183,9 @@ const STYLE_CLASSES: Record<Row['style'], { row: string; amount: string }> = {
   tax:        { row: 'bg-slate-800/40', amount: 'text-red-400' },
   net:        { row: 'bg-green-950/40 font-semibold border-t border-green-800', amount: 'text-green-400' },
   sub:        { row: 'bg-slate-800/20', amount: 'text-slate-400' },
+  benefit:    { row: 'bg-sky-950/30', amount: 'text-sky-300' },
+  pillar3:    { row: 'bg-violet-950/30', amount: 'text-violet-300' },
+  'net-eff':  { row: 'bg-emerald-950/50 font-semibold border-t border-emerald-700', amount: 'text-emerald-300' },
 };
 
 function styleClasses(s: Row['style']): { row: string; amount: string } {
@@ -112,7 +199,8 @@ export function WageBreakdownTable({ result, currency, countryCurrency, eurExcha
   // Detect paušální daň mode from the tax bracket description (set in computeScenario.ts)
   const isPausalniDan = isOSVC &&
     result.taxResult.bracketBreakdown.some(b => b.bracket.startsWith('Pau'));
-  const rows = buildRows(result, isOSVC, isPausalniDan);
+  const benefits = result.czBenefitResult;
+  const rows = buildRows(result, isOSVC, isPausalniDan, benefits);
   const gross = result.resolvedWage.grossLocal;
   const da = (n: number) => displayAmount(n, countryCurrency, currency, eurExchangeRate);
 
@@ -129,6 +217,9 @@ export function WageBreakdownTable({ result, currency, countryCurrency, eurExcha
               <tr key={i} className={`${sc.row} transition-colors`}>
                 <td className={`px-3 py-2 text-slate-300 ${row.indent ? 'pl-6' : ''} ${isSeparator ? 'text-center text-slate-400 italic text-xs' : ''}`}>
                   {isSeparator ? row.label : row.label.replace(/^\s+/, '')}
+                  {row.sublabel && (
+                    <div className="text-xs text-slate-500 font-normal mt-0.5">{row.sublabel}</div>
+                  )}
                 </td>
                 <td className={`px-3 py-2 text-right font-mono ${sc.amount}`}>
                   {isSeparator
@@ -167,9 +258,9 @@ export function WageBreakdownTable({ result, currency, countryCurrency, eurExcha
           <span className="text-slate-400 font-medium">Hidden cost: </span>
           Your employer pays{' '}
           <span className="text-amber-400 font-mono">
-            {da(result.sscResult.employerTotal)}
+            {da(result.sscResult.employerTotal + (benefits?.totalNetAdd ?? 0) + (benefits?.pensionContribMonthly ?? 0))}
           </span>{' '}
-          above your contract salary every month in social charges. This never appears on your payslip.
+          above your contract salary every month in social charges and benefits. This never fully appears on your payslip.
         </div>
       )}
     </div>

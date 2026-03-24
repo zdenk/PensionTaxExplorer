@@ -5,7 +5,7 @@
  * Pure function — no side effects.
  */
 
-import type { CountryConfig, YearlySnapshot, SSCResult, TaxResult } from '../types';
+import type { CountryConfig, YearlySnapshot, SSCResult, TaxResult, CZBenefitResult } from '../types';
 import { TaxEngine } from './TaxEngine';
 import { SSCEngine } from './SSCEngine';
 import { PensionEngine } from './PensionEngine';
@@ -39,6 +39,7 @@ export const TimelineBuilder = {
     retirementAge: number,
     retirementDuration: number,
     overrides?: { sscResult?: SSCResult; pensionGross?: number; taxResult?: TaxResult },
+    czBenefitResult?: CZBenefitResult,
   ): YearlySnapshot[] {
     const returnRate = getReturnRate(country);
     const careerYears = retirementAge - careerStartAge;
@@ -51,6 +52,13 @@ export const TimelineBuilder = {
     const pensionGross = overrides?.pensionGross ?? grossMonthly;
     const monthlyPensionSSC = SSCEngine.pensionSSCTotal(sscResult);
     const annualPensionSSC = monthlyPensionSSC * 12;
+
+    // ── CZ benefit amounts (0 when not active) ──────────────────────────────
+    const czNetBenefit  = czBenefitResult?.totalNetAdd       ?? 0;
+    const czDps         = czBenefitResult?.pensionContribMonthly ?? 0;
+    const totalErCostWithBenefits =
+      sscResult.totalEmployerCost + czNetBenefit + czDps;
+    const annualDps = czDps * 12;
 
     const pensionResult = PensionEngine.calculate(
       country,
@@ -75,6 +83,7 @@ export const TimelineBuilder = {
     let cumulativeContribCompounded = 0;
     let cumulativeIncomeTax = 0;
     let cumulativeNetTakeHome = 0;
+    let cumulativeDpsCompounded = 0;
     const annualIncomeTax = taxResult.incomeTaxMonthly * 12;
     const netTakeHome = grossMonthly - taxResult.incomeTaxMonthly - sscResult.employeeTotal;
     const annualNetTakeHome = netTakeHome * 12;
@@ -85,6 +94,8 @@ export const TimelineBuilder = {
         (cumulativeContribCompounded + annualPensionSSC) * (1 + returnRate);
       cumulativeIncomeTax += annualIncomeTax;
       cumulativeNetTakeHome += annualNetTakeHome;
+      // DPS pot grows: (prev pot + annual contribution) × (1 + r) — annuity-due
+      cumulativeDpsCompounded = (cumulativeDpsCompounded + annualDps) * (1 + returnRate);
 
       snapshots.push({
         age,
@@ -95,18 +106,23 @@ export const TimelineBuilder = {
         employeeSSC: sscResult.employeeTotal,
         employerSSC: sscResult.employerTotal,
         totalEmployerCost: sscResult.totalEmployerCost,
+        totalEmployerCostWithBenefits: czDps > 0 || czNetBenefit > 0 ? totalErCostWithBenefits : undefined,
         employeePensionSSC: sscResult.employeePensionPortion,
         employerPensionSSC: sscResult.employerPensionPortion,
         cumulativePensionContributions: cumulativeContribNominal,
         cumulativeContributionsCompounded: cumulativeContribCompounded,
         cumulativeIncomeTax,
         cumulativeNetTakeHome,
+        czNetBenefitMonthly:  czNetBenefit > 0  ? czNetBenefit : undefined,
+        czDpsMonthly:         czDps > 0         ? czDps        : undefined,
+        cumulativeDpsCompounded: czDps > 0 ? cumulativeDpsCompounded : undefined,
       });
     }
 
     const finalNominalContribs = cumulativeContribNominal;
     const finalCumulativeIncomeTax = cumulativeIncomeTax;
     const finalCumulativeNetTakeHome = cumulativeNetTakeHome;
+    const finalDpsPot = cumulativeDpsCompounded;
 
     // ── Retirement phase ─────────────────────────────────────────────────────
     let cumulativePensionReceived = 0;    let netCumulativePensionReceived = 0;
@@ -129,6 +145,9 @@ export const TimelineBuilder = {
         cumulativeIncomeTax: finalCumulativeIncomeTax,       // flat during retirement
         cumulativeNetTakeHome: finalCumulativeNetTakeHome,   // flat during retirement
         breakEvenReached,
+        cumulativeDpsCompounded: czDps > 0 ? finalDpsPot : undefined,
+        czDpsMonthly: czDps > 0 ? czDps : undefined,
+        czDpsMonthlyPension: czBenefitResult?.dpsMonthlyPension,
       });
     }
 

@@ -3,7 +3,7 @@
  * PRIMARY: Total Employer Cost | Contract Gross | Net Take-Home
  */
 
-import type { ScenarioResult } from '../types';
+import type { ScenarioResult, CZBenefitResult } from '../types';
 import { displayAmount, formatOverhead, formatPct } from '../utils/formatCurrency';
 
 interface Props {
@@ -11,16 +11,20 @@ interface Props {
   currency: 'EUR' | 'local';
   countryCurrency: string;
   eurExchangeRate: number;
+  /** When present, adds lighter-green secondary values showing totals with benefits */
+  czBenefitResult?: CZBenefitResult | null;
 }
 
 function KPICard({
-  label, value, sub, isPrimary, valueColor,
+  label, value, sub, isPrimary, valueColor, withBenefitsValue,
 }: {
   label: string;
   value: string;
   sub: string;
   isPrimary?: boolean;
   valueColor?: string;
+  /** Secondary value shown in lighter green when employer benefits are active */
+  withBenefitsValue?: string;
 }) {
   return (
     <div
@@ -34,12 +38,18 @@ function KPICard({
       <p className={`text-lg font-semibold font-mono leading-tight ${valueColor ?? 'text-slate-100'}`}>
         {value}
       </p>
+      {withBenefitsValue && (
+        <p className="text-sm font-mono font-semibold text-green-300 leading-tight">
+          {withBenefitsValue}
+          <span className="text-[10px] font-normal text-slate-500 ml-1">w/ benefits</span>
+        </p>
+      )}
       <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
     </div>
   );
 }
 
-export function KPIRow({ result, currency, countryCurrency, eurExchangeRate }: Props) {
+export function KPIRow({ result, currency, countryCurrency, eurExchangeRate, czBenefitResult }: Props) {
   const { sscResult, taxResult } = result;
   const gross = result.resolvedWage.grossLocal;
   const netTakeHome = gross - taxResult.incomeTaxMonthly - sscResult.employeeTotal;
@@ -52,6 +62,14 @@ export function KPIRow({ result, currency, countryCurrency, eurExchangeRate }: P
 
   const da = (n: number) => displayAmount(n, countryCurrency, currency, eurExchangeRate);
 
+  // With-benefits variants (benefit amounts are real employer costs, just tax-exempt)
+  const benefitNetAdd  = czBenefitResult?.totalNetAdd         ?? 0; // fringe + meal → net
+  const benefitDps     = czBenefitResult?.pensionContribMonthly ?? 0; // DPS → locked
+  const hasBenefits    = !isOSVC && (benefitNetAdd > 0 || benefitDps > 0);
+  const totalCostWithB = sscResult.totalEmployerCost + benefitNetAdd + benefitDps;
+  const netWithB       = netTakeHome + benefitNetAdd;
+  const overheadWithB  = formatOverhead(totalCostWithB, gross);
+
   return (
     <div className="flex gap-2">
       <KPICard
@@ -60,6 +78,7 @@ export function KPIRow({ result, currency, countryCurrency, eurExchangeRate }: P
         sub={isOSVC ? 'All SSC self-paid (no employer)' : `Overhead: ${overheadPct} above gross`}
         isPrimary
         valueColor="text-slate-100"
+        withBenefitsValue={hasBenefits ? `${da(totalCostWithB)} (${overheadWithB} above gross)` : undefined}
       />
       <KPICard
         label={isOSVC ? 'Profit Before SSC & Tax' : 'Contract Gross'}
@@ -71,30 +90,50 @@ export function KPIRow({ result, currency, countryCurrency, eurExchangeRate }: P
         value={da(netTakeHome)}
         sub={netPct}
         valueColor="text-green-400"
+        withBenefitsValue={hasBenefits ? da(netWithB) : undefined}
       />
     </div>
   );
 }
 
 /** Effective rate summary row used inside WageBreakdownTable footer */
-export function EffectiveRates({ result }: { result: ScenarioResult }) {
+export function EffectiveRates({ result, czBenefitResult }: {
+  result: ScenarioResult;
+  czBenefitResult?: CZBenefitResult | null;
+}) {
   const gross = result.resolvedWage.grossLocal;
   const { taxResult, sscResult } = result;
   const totalDeductions = taxResult.incomeTaxMonthly + sscResult.employeeTotal;
   const netTakeHome = gross - totalDeductions;
 
+  const isOSVC = sscResult.employerTotal === 0 && sscResult.totalEmployerCost === gross;
+  const benefitNetAdd = (!isOSVC ? czBenefitResult?.totalNetAdd : 0) ?? 0;
+  const hasBenefits   = benefitNetAdd > 0;
+  const ratioBase     = gross > 0 ? netTakeHome / gross : 0;
+  const ratioWithB    = gross > 0 ? (netTakeHome + benefitNetAdd) / gross : 0;
+
   return (
     <div className="grid grid-cols-3 gap-2 text-center mt-2">
-      {[
-        { label: 'Effective tax rate', value: formatPct(taxResult.effectiveTaxRate), color: 'text-red-400' },
-        { label: 'Marginal tax rate', value: formatPct(taxResult.marginalTaxRate), color: 'text-orange-400' },
-        { label: 'Net/gross ratio', value: gross > 0 ? formatPct(netTakeHome / gross) : '—', color: 'text-green-400' },
-      ].map(r => (
-        <div key={r.label} className="bg-slate-900/40 rounded p-2">
-          <p className={`text-sm font-mono font-semibold ${r.color}`}>{r.value}</p>
-          <p className="text-xs text-slate-500">{r.label}</p>
-        </div>
-      ))}
+      <div className="bg-slate-900/40 rounded p-2">
+        <p className="text-sm font-mono font-semibold text-red-400">{formatPct(taxResult.effectiveTaxRate)}</p>
+        <p className="text-xs text-slate-500">Effective tax rate</p>
+      </div>
+      <div className="bg-slate-900/40 rounded p-2">
+        <p className="text-sm font-mono font-semibold text-orange-400">{formatPct(taxResult.marginalTaxRate)}</p>
+        <p className="text-xs text-slate-500">Marginal tax rate</p>
+      </div>
+      <div className="bg-slate-900/40 rounded p-2">
+        <p className="text-sm font-mono font-semibold text-green-400">
+          {gross > 0 ? formatPct(ratioBase) : '—'}
+        </p>
+        {hasBenefits && (
+          <p className="text-xs font-mono font-semibold text-green-300">
+            {formatPct(ratioWithB)}
+            <span className="text-[10px] font-normal text-slate-500 ml-1">w/ benefits</span>
+          </p>
+        )}
+        <p className="text-xs text-slate-500">Net/gross ratio</p>
+      </div>
     </div>
   );
 }

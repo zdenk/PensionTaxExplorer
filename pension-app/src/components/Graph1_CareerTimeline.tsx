@@ -61,6 +61,8 @@ const LEGEND_ITEMS = [
   { color: '#f87171', label: 'Income Tax' },
   { color: '#94a3b8', label: 'Er Pension SSC' },
   { color: '#cbd5e1', label: 'Er Other SSC' },
+  { color: '#38bdf8', label: 'Fringe/Meal Benefits' },
+  { color: '#a78bfa', label: 'DPS Contribution' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -85,38 +87,64 @@ export function Graph1_CareerTimeline({
   const erPension = sscResult.employerPensionPortion / fx;
   const erOther   = Math.max(0, sscResult.employerTotal - sscResult.employerPensionPortion) / fx;
 
+  // CZ employer benefits (0 when not applicable)
+  const czBr         = result.czBenefitResult;
+  const netBenefits  = (czBr?.totalNetAdd         ?? 0) / fx;   // fringe + meal → net pay
+  const dpsContrib   = (czBr?.pensionContribMonthly ?? 0) / fx; // DPS → locked 3rd pillar
+  const dpsMonthly   = (czBr?.dpsMonthlyPension     ?? 0) / fx; // DPS income in retirement
+  const hasDps       = dpsContrib > 0;
+
+  const totalEmployerCostFull = (sscResult.totalEmployerCost + (czBr?.totalNetAdd ?? 0) + (czBr?.pensionContribMonthly ?? 0)) / fx;
+
   const hasP2   = (pensionResult.pillar2Monthly ?? 0) > 0;
   const p1       = pensionResult.pillar1Monthly / fx;
   const p2       = hasP2 ? (pensionResult.pillar2Monthly ?? 0) / fx : 0;
   const total    = pensionResult.monthlyPension / fx;
   const fair     = fairReturn.monthlyAnnuity / fx;
   const pTax     = (pensionResult.pensionIncomeTax ?? 0) / fx;
-  const netTotal = total - pTax;   // what the retiree actually keeps monthly
+  const netTotal = total - pTax;
 
-  // Shared x-axis domain: employer cost is always the widest bar
-  const xMax = sscResult.totalEmployerCost / fx;
+  // x-axis domain: widest bar is employer cost (including benefits)
+  const xMax = Math.max(totalEmployerCostFull, gross / fx) * 1.01;
 
-  // All rows in one dataset — unused keys are 0 so stacks don't appear
-  const data = [
+  // Build one dataset entry per bar row
+  type BarRow = {
+    name: string;
+    netPay: number; eePension: number; eeOther: number; tax: number;
+    erPension: number; erOther: number; netBenefits: number; dpsContrib: number;
+    p1: number; p2: number; pTax: number; fair: number; dpsMonthly: number;
+  };
+
+  const zero: BarRow = {
+    name: '', netPay: 0, eePension: 0, eeOther: 0, tax: 0,
+    erPension: 0, erOther: 0, netBenefits: 0, dpsContrib: 0,
+    p1: 0, p2: 0, pTax: 0, fair: 0, dpsMonthly: 0,
+  };
+
+  const data: BarRow[] = [
     {
+      ...zero,
       name: 'Employer Cost',
-      netPay, eePension, eeOther, tax, erPension, erOther,
-      p1: 0, p2: 0, pTax: 0, fair: 0,
+      netPay, eePension, eeOther, tax, erPension, erOther, netBenefits, dpsContrib,
     },
     {
+      ...zero,
       name: 'State Pension',
-      netPay: 0, eePension: 0, eeOther: 0, tax: 0, erPension: 0, erOther: 0,
-      p1, p2: hasP2 ? p2 : 0, pTax, fair: 0,
+      p1, p2: hasP2 ? p2 : 0, pTax,
     },
+    ...(hasDps ? [{
+      ...zero,
+      name: 'DPS (3rd Pillar)',
+      dpsMonthly,
+    }] : []),
     {
+      ...zero,
       name: 'Fair Return',
-      netPay: 0, eePension: 0, eeOther: 0, tax: 0, erPension: 0, erOther: 0,
-      p1: 0, p2: 0, pTax: 0, fair,
+      fair,
     },
   ];
 
-  // Height: 3 rows × ~34px each + padding
-  const chartHeight = 3 * 36 + 8;
+  const chartHeight = data.length * 36 + 8;
 
   return (
     <div className="mt-4">
@@ -128,11 +156,11 @@ export function Graph1_CareerTimeline({
         <BarChart
           layout="vertical"
           data={data}
-          margin={{ top: 0, right: 48, bottom: 0, left: 80 }}
+          margin={{ top: 0, right: 56, bottom: 0, left: 80 }}
           barSize={22}
           barGap={0}
         >
-          <XAxis type="number" hide domain={[0, xMax * 1.01]} />
+          <XAxis type="number" hide domain={[0, xMax]} />
           <YAxis
             type="category"
             dataKey="name"
@@ -178,15 +206,18 @@ export function Graph1_CareerTimeline({
           />
 
           {/* ── Employer cost segments ── */}
-          <Bar dataKey="netPay"    stackId="s" fill="#22c55e" name="Net Pay"        isAnimationActive={false} />
-          <Bar dataKey="eePension" stackId="s" fill="#facc15" name="Ee Pension SSC" isAnimationActive={false} />
-          <Bar dataKey="eeOther"   stackId="s" fill="#fb923c" name="Ee Other SSC"   isAnimationActive={false} />
-          <Bar dataKey="tax"       stackId="s" fill="#f87171" name="Income Tax"     isAnimationActive={false} />
-          <Bar dataKey="erPension" stackId="s" fill="#94a3b8" name="Er Pension SSC" isAnimationActive={false} />
-          <Bar dataKey="erOther"   stackId="s" fill="#cbd5e1" name="Er Other SSC"   isAnimationActive={false} radius={[0, 2, 2, 0]}>
+          <Bar dataKey="netPay"       stackId="s" fill="#22c55e" name="Net Pay"               isAnimationActive={false} />
+          <Bar dataKey="eePension"    stackId="s" fill="#facc15" name="Ee Pension SSC"         isAnimationActive={false} />
+          <Bar dataKey="eeOther"      stackId="s" fill="#fb923c" name="Ee Other SSC"           isAnimationActive={false} />
+          <Bar dataKey="tax"          stackId="s" fill="#f87171" name="Income Tax"             isAnimationActive={false} />
+          <Bar dataKey="erPension"    stackId="s" fill="#94a3b8" name="Er Pension SSC"         isAnimationActive={false} />
+          <Bar dataKey="erOther"      stackId="s" fill="#cbd5e1" name="Er Other SSC"           isAnimationActive={false} />
+          {/* CZ benefit segments — only visible on CZ cards */}
+          <Bar dataKey="netBenefits"  stackId="s" fill="#38bdf8" name="Fringe/Meal Benefits"  isAnimationActive={false} />
+          <Bar dataKey="dpsContrib"   stackId="s" fill="#a78bfa" name="DPS Contribution" isAnimationActive={false} radius={[0, 2, 2, 0]}>
             <LabelList
               valueAccessor={(_: unknown, index: number) =>
-                index === 0 ? fmt(sscResult.totalEmployerCost / fx) : ''
+                index === 0 ? fmt(totalEmployerCostFull) : ''
               }
               position="right"
               style={{ fill: '#64748b', fontSize: 10 }}
@@ -232,12 +263,26 @@ export function Graph1_CareerTimeline({
             </Bar>
           )}
 
+          {/* ── DPS (3rd pillar) monthly pension — only CZ when active ── */}
+          <Bar dataKey="dpsMonthly" stackId="s" fill="#7c3aed" name="DPS Monthly Pension" isAnimationActive={false} radius={[0,2,2,0]}>
+            <LabelList
+              valueAccessor={(_: unknown, index: number) => {
+                // Show on the DPS row (index 2 when DPS row exists)
+                const dpsRowIdx = hasDps ? (hasP2 ? 3 : 2) : -1;
+                return index === dpsRowIdx ? fmt(dpsMonthly) : '';
+              }}
+              position="right"
+              style={{ fill: '#a78bfa', fontSize: 10 }}
+            />
+          </Bar>
+
           {/* ── Fair return segment ── */}
           <Bar dataKey="fair" stackId="s" fill="#a78bfa" name="Fair Return" isAnimationActive={false} radius={[0,2,2,0]}>
             <LabelList
-              valueAccessor={(_: unknown, index: number) =>
-                index === 2 ? fmt(fair) : ''
-              }
+              valueAccessor={(_: unknown, index: number) => {
+                const fairRowIdx = hasDps ? data.length - 1 : data.length - 1;
+                return index === fairRowIdx ? fmt(fair) : '';
+              }}
               position="right"
               style={{ fill: '#64748b', fontSize: 10 }}
             />
@@ -247,12 +292,18 @@ export function Graph1_CareerTimeline({
 
       {/* ── Legend ── */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-        {LEGEND_ITEMS.map(({ color, label }) => (
-          <span key={label} className="flex items-center gap-1 text-xs text-slate-500">
-            <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: color }} />
-            {label}
-          </span>
-        ))}
+        {LEGEND_ITEMS
+          .filter(({ label }) => {
+            if (label === 'Fringe/Meal Benefits') return netBenefits > 0;
+            if (label === 'DPS Contribution') return dpsContrib > 0;
+            return true;
+          })
+          .map(({ color, label }) => (
+            <span key={label} className="flex items-center gap-1 text-xs text-slate-500">
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: color }} />
+              {label}
+            </span>
+          ))}
         <span className="flex items-center gap-1 text-xs text-slate-500">
           <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#38bdf8' }} />
           {hasP2 ? 'Pillar 1' : 'State Pension'}
@@ -267,6 +318,12 @@ export function Graph1_CareerTimeline({
           <span className="flex items-center gap-1 text-xs text-slate-500">
             <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#dc2626' }} />
             Pension Tax
+          </span>
+        )}
+        {hasDps && (
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#7c3aed' }} />
+            DPS Monthly Pension
           </span>
         )}
         <span className="flex items-center gap-1 text-xs text-slate-500">
