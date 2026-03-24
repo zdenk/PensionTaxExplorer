@@ -135,6 +135,12 @@ The **EUR / Local** toggle in the controls bar switches all monetary amounts bet
 
 ### 7. Czech Republic Self-Employment Modes
 For countries that have a modelled self-employment variant (e.g. Czech Republic OSVČ), a **SE** button appears on the country chip. Toggle it to add a self-employment column alongside the standard employee column (counts toward the 3-column maximum).
+Keep in mind the following hidden benefits of employment
+Sick pay (nemocenské): employees receive sick pay; OSVČ have none unless they voluntarily pay ~2.7% extra. During sick leave, OSVČ revenue drops to zero.
+Unemployment benefit (podpora v nezaměstnanosti): OSVČ are ineligible. Employees get 65%/50%/45% of previous net wage for up to 5 months.
+Employer risk: if the business fails, an OSVČ has no safety net. An employee has redundancy law protection.
+Holiday: employees are legally entitled to 4+ weeks paid. OSVČ take unpaid time off — every day off is lost revenue.
+Occupational health checks, meal vouchers, employer pension contributions (příspěvek zaměstnavatele na penzijní spoření) — these are genuinely valuable and commonly provided.
 
 ### 8. Czech Republic — Employer Benefits & DPS
 

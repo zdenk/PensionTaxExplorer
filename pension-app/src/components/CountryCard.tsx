@@ -1,7 +1,5 @@
 /**
- * CountryCard — full per-country panel (§5 spec)
- * Phase 2: Header + KPIRow + WageBreakdownTable + SSCRedistributionTable
- * Phase 3: Graph1_CareerTimeline + Graph2_Accumulation
+ * CountryCard — full per-country panel
  */
 
 import type { CountryConfig, AppState, ScenarioResult, SelfEmploymentMode, EmployerBenefitDef } from '../types';

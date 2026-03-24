@@ -8,4 +8,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: process.env.VITE_BASE_PATH ?? '/',
+  optimizeDeps: {
+    // Plotly.js uses CommonJS internals that need pre-bundling by Vite
+    include: ['react-plotly.js', 'plotly.js-geo-dist-min'],
+  },
 });
