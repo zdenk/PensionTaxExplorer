@@ -255,12 +255,12 @@ export function WageBreakdownTable({ result, currency, countryCurrency, eurExcha
         </div>
       ) : (
         <div className="mt-2 text-xs text-slate-500 bg-slate-900/40 rounded px-3 py-2">
-          <span className="text-slate-400 font-medium">Hidden cost: </span>
+          <span className="text-slate-400 font-medium">Employer cost above gross: </span>
           Your employer pays{' '}
           <span className="text-amber-400 font-mono">
             {da(result.sscResult.employerTotal + (benefits?.totalNetAdd ?? 0) + (benefits?.pensionContribMonthly ?? 0))}
           </span>{' '}
-          above your contract salary every month in social charges and benefits. This never fully appears on your payslip.
+          above your contract salary in employer SSC and benefits — this amount funds mandatory social insurance and does not appear on your payslip.
         </div>
       )}
     </div>

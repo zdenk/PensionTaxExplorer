@@ -354,9 +354,38 @@ function CareerOverridePanel({ state, dispatch }: { state: AppState; dispatch: R
               </div>
             );
           })}
+
+          {/* ── Return rate slider ── */}
+          <div className="col-span-3 border-t border-slate-700/60 pt-3 space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-slate-400">
+                Actuarial-equivalent return rate
+                <span className="ml-1.5 text-slate-600 font-normal">(1–3 % real net-of-fees)</span>
+              </span>
+              <span className="text-xs text-violet-400 font-mono">
+                {(state.fairReturnRate * 100).toFixed(1)}%
+              </span>
+            </div>
+            <input
+              type="range" min={0.01} max={0.03} step={0.005} value={state.fairReturnRate}
+              onChange={e => dispatch({ type: 'SET_FAIR_RETURN_RATE', rate: parseFloat(e.target.value) })}
+              className="w-full accent-violet-500"
+            />
+            <div className="flex justify-between text-[10px] text-slate-600">
+              <span>1.0% — pessimistic / bond-heavy</span>
+              <span>1.5%</span>
+              <span>2.0% — OECD base</span>
+              <span>2.5%</span>
+              <span>3.0% — equity-heavy</span>
+            </div>
+          </div>
+
           <div className="col-span-3 flex justify-end">
             <button
-              onClick={() => dispatch({ type: 'RESET_CAREER_OVERRIDES' })}
+              onClick={() => {
+                dispatch({ type: 'RESET_CAREER_OVERRIDES' });
+                dispatch({ type: 'SET_FAIR_RETURN_RATE', rate: 0.030 });
+              }}
               className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline"
             >
               Reset to defaults

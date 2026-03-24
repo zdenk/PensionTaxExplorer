@@ -296,6 +296,8 @@ export interface FairReturnResult {
   monthlyAnnuity: number;
   totalContributionsPaid: number;
   breakEvenAge: number | null;
+  /** The real return rate actually used for this calculation (may differ from country default). */
+  returnRate: number;
 }
 
 /**
@@ -628,4 +630,10 @@ export interface AppState {
   careerOverrides: Partial<CareerDefaults>;
   activeFormulaSidebarCountry: string;
   sidebarOpen: boolean;
+  /**
+   * Global real return rate override for the actuarial-equivalent (fair-return) comparison.
+   * Overrides the per-country defaultAnnualReturnRate. Range: 0.01–0.03 (1–3 %).
+   * Default: 0.030 (3 % real net-of-fees).
+   */
+  fairReturnRate: number;
 }

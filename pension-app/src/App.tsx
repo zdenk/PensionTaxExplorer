@@ -46,6 +46,7 @@ export default function App() {
         modeName,
         // CZ employer benefits — only consumed by the CZ engine; ignored for other countries
         state.czBenefits,
+        state.fairReturnRate,
       );
     }
   }
@@ -101,7 +102,16 @@ export default function App() {
             rel="noopener noreferrer"
             className="underline hover:text-amber-200 transition-colors"
           >
-            Report an issue on GitHub
+            Report an issue
+          </a>
+          {' · '}
+          <a
+            href="https://github.com/zdenk/PensionTaxExplorer"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-amber-200 transition-colors"
+          >
+            GitHub repo
           </a>
         </span>
       </div>

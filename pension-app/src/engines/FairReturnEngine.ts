@@ -103,6 +103,7 @@ export const FairReturnEngine = {
       monthlyAnnuity,
       totalContributionsPaid,
       breakEvenAge,
+      returnRate: annualReturnRate,
     };
   },
 };

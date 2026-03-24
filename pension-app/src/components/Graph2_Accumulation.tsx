@@ -25,12 +25,12 @@ import type { ScenarioResult } from '../types';
 type LineGroup = 'accumulation' | 'taxes' | 'takeHome' | 'benefits' | 'statePension' | 'combined';
 
 const LINE_GROUPS: { id: LineGroup; label: string; color: string }[] = [
-  { id: 'accumulation', label: 'Accumulation',   color: '#a78bfa' },
+  { id: 'accumulation', label: 'Accumulation',   color: '#fd16b8' },
   { id: 'taxes',        label: 'Taxes',          color: '#f87171' },
   { id: 'takeHome',     label: 'Take-Home',      color: '#22c55e' },
   { id: 'benefits',     label: 'Take-Home + Benefits', color: '#86efac' },
   { id: 'statePension', label: 'State pension',  color: '#4ade80' },
-  { id: 'combined',     label: 'State + DPS',    color: '#38bdf8' },
+  { id: 'combined',     label: 'State + DPS',    color: '#7c3aed' },
 ];
 
 interface Props {
@@ -104,6 +104,9 @@ export function Graph2_Accumulation({
   // Net state pension (after pension income tax if any)
   const netMonthlyStatePension = result.pensionResult.netMonthlyPension ?? result.pensionResult.monthlyPension;
 
+  // Whether this country levies income tax on pension income
+  const hasPensionTax = (result.pensionResult.pensionIncomeTax ?? 0) > 0;
+
   // Total nominal contributions at retirement (flat reference for retirement phase)
   const totalPaidIn =
     timeline.find(s => s.phase === 'retirement')
@@ -141,17 +144,20 @@ export function Graph2_Accumulation({
     netTakeHome: number;
     /** Cumulative net take-home including fringe/meal benefits (light green) */
     netTakeHomeWithBenefits: number | null;
-    received: number | null;
     netReceived: number | null;
     netTakeHomePlusPension: number | null;
     dpsCompounded: number | null;
+    /** Cumulative GROSS pension received — retirement only, zero-anchored; dashed line */
+    grossReceived: number | null;
+    /** Cumulative income tax + pension income tax (stacked) — null when country has no pension tax */
+    pensionTaxPaid: number | null;
     /** Cumulative (net state pension + DPS annuity) — retirement only, zero-anchored */
     netTotalReceived: number | null;
     /** Career net take-home baseline + netTotalReceived — dotted, retirement only */
     netTakeHomePlusTotalPension: number | null;
     /** Benefits baseline + net state pension — dotted, retirement only */
     netBenefitsPlusPension: number | null;
-    /** Benefits baseline + state + DPS — dotted, retirement only */
+    /** Benefits baseline + net state + DPS — dotted, retirement only */
     netBenefitsPlusTotalPension: number | null;
   };
 
@@ -166,11 +172,12 @@ export function Graph2_Accumulation({
     if (p.netTakeHome   > ex.netTakeHome)   ex.netTakeHome   = p.netTakeHome;
     if (p.netTakeHomeWithBenefits !== null && (ex.netTakeHomeWithBenefits === null || p.netTakeHomeWithBenefits > ex.netTakeHomeWithBenefits))
       ex.netTakeHomeWithBenefits = p.netTakeHomeWithBenefits;
-    if (p.received    !== null) ex.received    = p.received;
     if (p.netReceived !== null) ex.netReceived = p.netReceived;
     if (p.netTakeHomePlusPension !== null) ex.netTakeHomePlusPension = p.netTakeHomePlusPension;
     if (p.dpsCompounded !== null && (ex.dpsCompounded === null || p.dpsCompounded > ex.dpsCompounded))
       ex.dpsCompounded = p.dpsCompounded;
+    if (p.grossReceived   !== null) ex.grossReceived   = p.grossReceived;
+    if (p.pensionTaxPaid  !== null) ex.pensionTaxPaid  = p.pensionTaxPaid;
     if (p.netTotalReceived !== null) ex.netTotalReceived = p.netTotalReceived;
     if (p.netTakeHomePlusTotalPension !== null) ex.netTakeHomePlusTotalPension = p.netTakeHomePlusTotalPension;
     if (p.netBenefitsPlusPension !== null) ex.netBenefitsPlusPension = p.netBenefitsPlusPension;
@@ -185,12 +192,21 @@ export function Graph2_Accumulation({
   const hasBenefitNetAdd = !isOSVC && czNetBenefitMonthly > 0;
   // Total cumulative benefit added over the full career
   const totalNetTakeHomeWithBenefits = totalNetTakeHome / fx + czNetBenefitMonthly * 12 * careerYears;
-  // Peak DPS pot at retirement (from last career snapshot)
-  const dpsPotPeak = (czBr?.dpsPotAtRetirement ?? 0) / fx;
+  // Peak DPS pot — sourced from the timeline's last career snapshot so the chart
+  // line is guaranteed to match the career series and stay flat through retirement.
+  // (czBr.dpsPotAtRetirement can differ when the return-rate slider overrides the
+  //  country default used by TimelineBuilder, causing a spurious drop at retirement.)
+  const dpsPotPeak = hasDps
+    ? (lastCareerSnap?.cumulativeDpsCompounded ?? czBr?.dpsPotAtRetirement ?? 0) / fx
+    : 0;
   const dpsMonthlyPension = (czBr?.dpsMonthlyPension ?? 0) / fx;
 
+  // Pre-divide career totals once — used repeatedly in the retirement loop.
+  const netTakeHomeLocal   = totalNetTakeHome   / fx;
+  const totalIncomeTaxLocal = totalIncomeTaxPaid / fx;
+
   // Zero-anchor at career start
-  setOrMerge({ age: careerStartAge, contributions: 0, compounded: 0, incomeTax: 0, netTakeHome: 0, netTakeHomeWithBenefits: hasBenefitNetAdd ? 0 : null, received: null, netReceived: null, netTakeHomePlusPension: null, dpsCompounded: null, netTotalReceived: null, netTakeHomePlusTotalPension: null, netBenefitsPlusPension: null, netBenefitsPlusTotalPension: null });
+  setOrMerge({ age: careerStartAge, contributions: 0, compounded: 0, incomeTax: 0, netTakeHome: 0, netTakeHomeWithBenefits: hasBenefitNetAdd ? 0 : null, netReceived: null, netTakeHomePlusPension: null, dpsCompounded: null, grossReceived: null, pensionTaxPaid: null, netTotalReceived: null, netTakeHomePlusTotalPension: null, netBenefitsPlusPension: null, netBenefitsPlusTotalPension: null });
 
   for (const snap of timeline) {
     if (snap.phase === 'career') {
@@ -205,61 +221,65 @@ export function Graph2_Accumulation({
         incomeTax:     (snap.cumulativeIncomeTax ?? 0) / fx,
         netTakeHome:   (snap.cumulativeNetTakeHome ?? 0) / fx,
         netTakeHomeWithBenefits: hasBenefitNetAdd
-          ? (snap.cumulativeNetTakeHome ?? 0) / fx + (cumulBenefitHere ?? 0)
+          ? (snap.cumulativeNetTakeHome ?? 0) / fx + cumulBenefitHere!
           : null,
-        received:      null,
         netReceived:   null,
         netTakeHomePlusPension: null,
         dpsCompounded: hasDps ? (snap.cumulativeDpsCompounded ?? 0) / fx : null,
+        grossReceived: null,
+        pensionTaxPaid: null,
         netTotalReceived: null,
         netTakeHomePlusTotalPension: null,
         netBenefitsPlusPension: null,
         netBenefitsPlusTotalPension: null,
       });
     } else {
-      // Shift by +1 as well: snapshot at age X (= pension received during year X)
-      // is displayed at X+1. This means the first retirement year shows at retirementAge+1.
-      const netPensionSoFar = (snap.netCumulativePensionReceived ?? 0) / fx;
-      // Years of retirement completed by end of this snapshot year (1-based)
-      const yearsRetired = snap.age - retirementAge + 1;
-      const dpsCumulative = hasDps ? (dpsMonthlyPension * 12 * yearsRetired) : 0;
+      // Shift by +1: snapshot at age X (pension received during year X) displayed at X+1.
+      const grossPensionSoFar = (snap.cumulativePensionReceived ?? 0) / fx;
+      const netPensionSoFar   = (snap.netCumulativePensionReceived ?? 0) / fx;
+      // Stack pension income tax on top of career income tax so the dashed retirement
+      // continuation starts where the flat career line ends.
+      const pensionTaxStacked = hasPensionTax
+        ? totalIncomeTaxLocal + (grossPensionSoFar - netPensionSoFar)
+        : null;
+      const yearsRetired  = snap.age - retirementAge + 1;
+      const dpsCumulative = hasDps ? dpsMonthlyPension * 12 * yearsRetired : 0;
       const netTotalSoFar = netPensionSoFar + dpsCumulative;
       setOrMerge({
         age: snap.age + 1,
-        contributions: totalPaidIn / fx,
-        compounded:    compoundedPeak / fx,
-        incomeTax:     totalIncomeTaxPaid / fx,
-        netTakeHome:   totalNetTakeHome / fx,
-        // During retirement benefits line is flat at its career-end value
+        contributions:  totalPaidIn / fx,
+        compounded:     compoundedPeak / fx,
+        incomeTax:      totalIncomeTaxLocal,
+        netTakeHome:    netTakeHomeLocal,
         netTakeHomeWithBenefits: hasBenefitNetAdd ? totalNetTakeHomeWithBenefits : null,
-        received:      (snap.cumulativePensionReceived ?? 0) / fx,
-        netReceived:   netPensionSoFar,
-        netTakeHomePlusPension: totalNetTakeHome / fx + netPensionSoFar,
-        // DPS pot is flat after retirement
-        dpsCompounded: hasDps ? dpsPotPeak : null,
+        netReceived:    netPensionSoFar,
+        netTakeHomePlusPension: netTakeHomeLocal + netPensionSoFar,
+        dpsCompounded:  hasDps ? dpsPotPeak : null,
+        grossReceived:  grossPensionSoFar,
+        pensionTaxPaid: pensionTaxStacked,
         netTotalReceived: netTotalSoFar,
-        netTakeHomePlusTotalPension: totalNetTakeHome / fx + netTotalSoFar,
+        netTakeHomePlusTotalPension: netTakeHomeLocal + netTotalSoFar,
         netBenefitsPlusPension: hasBenefitNetAdd ? totalNetTakeHomeWithBenefits + netPensionSoFar : null,
         netBenefitsPlusTotalPension: hasBenefitNetAdd ? totalNetTakeHomeWithBenefits + netTotalSoFar : null,
       });
     }
   }
 
-  // Anchor the pension received line to 0 at retirementAge.
-  // The career peak is already placed there by the shifted career snapshot;
-  // we add received=0 so the line visually starts from zero at that age.
+  // Anchor the pension received / gross lines to 0 at retirementAge.
+  // The career peak is already placed at retirementAge by the shifted career snapshot;
+  // grossReceived is null there, so this runs exactly once.
   const retireAnchor = ageMap.get(retirementAge);
-  if (retireAnchor && retireAnchor.received === null) {
-    retireAnchor.received = 0;
-    retireAnchor.netReceived = 0;
-    retireAnchor.netTakeHomePlusPension = totalNetTakeHome / fx;
+  if (retireAnchor && retireAnchor.grossReceived === null) {
+    retireAnchor.netReceived  = 0;
+    retireAnchor.grossReceived = 0;
+    retireAnchor.pensionTaxPaid = hasPensionTax ? totalIncomeTaxLocal : null;
+    retireAnchor.netTakeHomePlusPension = netTakeHomeLocal;
     retireAnchor.netTotalReceived = 0;
-    retireAnchor.netTakeHomePlusTotalPension = totalNetTakeHome / fx;
+    retireAnchor.netTakeHomePlusTotalPension = netTakeHomeLocal;
     if (hasBenefitNetAdd) {
       retireAnchor.netBenefitsPlusPension = totalNetTakeHomeWithBenefits;
       retireAnchor.netBenefitsPlusTotalPension = totalNetTakeHomeWithBenefits;
     }
-    // benefits line is already flat from last career snap — no need to reset
   }
 
   const data = Array.from(ageMap.values()).sort((a, b) => a.age - b.age);
@@ -375,8 +395,8 @@ export function Graph2_Accumulation({
           {show('accumulation') && (
             <Line
               dataKey="compounded"
-              name="Fair return pot (3% real)"
-              stroke="#a78bfa"
+              name={`Actuarial-equivalent pot (${(fairReturn.returnRate * 100).toFixed(1)}% real)`}
+              stroke="#f800ec"
               strokeWidth={1.5}
               strokeDasharray="5 3"
               dot={false}
@@ -401,11 +421,23 @@ export function Graph2_Accumulation({
           {show('taxes') && (
             <Line
               dataKey="incomeTax"
-              name="Income Tax Paid"
+              name="Income Tax Paid (career)"
               stroke="#f87171"
               strokeWidth={1.5}
               dot={false}
               connectNulls
+              isAnimationActive={false}
+            />
+          )}
+          {show('taxes') && hasPensionTax && (
+            <Line
+              dataKey="pensionTaxPaid"
+              name="Income Tax incl. Pension Tax"
+              stroke="#f87171"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
               isAnimationActive={false}
             />
           )}
@@ -440,7 +472,7 @@ export function Graph2_Accumulation({
           {show('statePension') && show('takeHome') && hasBenefitNetAdd && show('benefits') && (
             <Line
               dataKey="netBenefitsPlusPension"
-              name="(Benefits) + State Pension"
+              name="(Benefits) + Net State Pension"
               stroke="#86efac"
               strokeWidth={1.5}
               strokeDasharray="4 3"
@@ -452,8 +484,8 @@ export function Graph2_Accumulation({
           {show('combined') && show('takeHome') && hasBenefitNetAdd && show('benefits') && (
             <Line
               dataKey="netBenefitsPlusTotalPension"
-              name="(Benefits) + State + DPS"
-              stroke="#7dd3fc"
+              name="(Benefits) + Net State + DPS"
+              stroke="#a78bfa"
               strokeWidth={1.5}
               strokeDasharray="2 3"
               dot={false}
@@ -463,10 +495,22 @@ export function Graph2_Accumulation({
           )}
 
           {/* ── State pension group ── */}
+          {show('statePension') && hasPensionTax && (
+            <Line
+              dataKey="grossReceived"
+              name="Gross State Pension"
+              stroke="#f472b6"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
           {show('statePension') && (
             <Line
               dataKey="netReceived"
-              name="Net State Pension"
+              name={hasPensionTax ? 'Net State Pension (after tax)' : 'State Pension'}
               stroke="#4ade80"
               strokeWidth={2}
               dot={false}
@@ -478,7 +522,7 @@ export function Graph2_Accumulation({
           {show('statePension') && show('takeHome') && !(hasBenefitNetAdd && show('benefits')) && (
             <Line
               dataKey="netTakeHomePlusPension"
-              name="Take-Home + State Pension"
+              name="Take-Home + Net State Pension"
               stroke="#86efac"
               strokeWidth={1.5}
               strokeDasharray="4 3"
@@ -493,7 +537,7 @@ export function Graph2_Accumulation({
             <Line
               dataKey="netTotalReceived"
               name="State + DPS (cumulative)"
-              stroke="#38bdf8"
+              stroke="#7c3aed"
               strokeWidth={2}
               dot={false}
               connectNulls={false}
@@ -503,8 +547,8 @@ export function Graph2_Accumulation({
           {show('combined') && show('takeHome') && !(hasBenefitNetAdd && show('benefits')) && (
             <Line
               dataKey="netTakeHomePlusTotalPension"
-              name="Take-Home + State + DPS"
-              stroke="#7dd3fc"
+              name="Take-Home + Net State + DPS"
+              stroke="#a78bfa"
               strokeWidth={1.5}
               strokeDasharray="4 3"
               dot={false}
@@ -546,8 +590,8 @@ export function Graph2_Accumulation({
           {/* Compounded pot — violet, matching the dashed violet line */}
           <div className="bg-violet-950/30 border border-violet-700/40 rounded-lg p-2 text-center">
             <p className="text-violet-400 font-mono font-semibold">{fmt(compoundedPeak / fx)}</p>
-            <p className="text-slate-500 mt-0.5 leading-tight">Fair return pot</p>
-            <p className="text-[10px] text-slate-600 leading-tight">+{gainPct}% on SSC paid • 3% real</p>
+            <p className="text-slate-500 mt-0.5 leading-tight">Actuarial-equivalent pot</p>
+            <p className="text-[10px] text-slate-600 leading-tight">+{gainPct}% on SSC paid · {(fairReturn.returnRate * 100).toFixed(1)}% real (see note ↓)</p>
           </div>
 
           {/* Fair return annuity — violet, clearly distinguishable */}
@@ -556,8 +600,8 @@ export function Graph2_Accumulation({
               {fmt(fairReturn.monthlyAnnuity / fx)}
               <span className="text-xs font-normal text-slate-500">/mo</span>
             </p>
-            <p className="text-slate-400 mt-0.5 leading-tight font-medium">Fair return annuity</p>
-            <p className="text-[10px] text-slate-600 leading-tight">If SSC invested at 3% real</p>
+            <p className="text-slate-400 mt-0.5 leading-tight font-medium">Actuarial-equivalent annuity</p>
+            <p className="text-[10px] text-slate-600 leading-tight">If SSC invested at {(fairReturn.returnRate * 100).toFixed(1)}% real net-of-fees</p>
           </div>
 
           {/* Actual state pension — green, matching the net pension received line */}
@@ -588,6 +632,14 @@ export function Graph2_Accumulation({
           )}
         </div>
       </div>
+
+      {/* ── Comparison caveat ── */}
+      <p className="mt-2 text-[10px] text-slate-600 leading-snug px-0.5">
+        <span className="text-slate-500 font-medium">Note on actuarial-equivalent comparison: </span>
+        The funded-equivalent column shows what you <em>could</em> accumulate if pension SSC were invested at {(fairReturn.returnRate * 100).toFixed(1)}&nbsp;% real net-of-fees (adjust via Career Assumptions ▲).
+        PAYG systems provide value this comparison does not capture: redistribution to low earners, longevity pooling, survivor benefits, and credits for non-contributory periods (parental leave, unemployment, etc.).
+        A gap between the state pension and the actuarial-equivalent estimate reflects the cost of those social-insurance features, not only system inefficiency.
+      </p>
 
     </div>
   );
