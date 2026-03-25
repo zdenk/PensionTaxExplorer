@@ -73,6 +73,8 @@ Statutory pension systems across 22 countries involve hundreds of parameters (ac
 - **Self-employment modes** — side-by-side employed vs self-employed comparison where modelled
 - **Fair-return analysis** — estimates the internal rate of return on mandatory pension contributions
 - **OECD benchmark comparison** — validates results against published *Pensions at a Glance* replacement rates
+- **Shareable URLs** — copy a link that encodes the full app state (countries, wage mode, career assumptions, currency) as a URL hash fragment
+- **Anonymous analytics** — opt-in PostHog analytics (EU cloud) track which countries are compared and which controls are adjusted; all financial inputs are excluded
 
 ### Country Coverage (22 OECD EU members)
 
@@ -174,6 +176,9 @@ The DPS pot and the resulting monthly annuity are included in the **Total pensio
 ### 9. Sources Page
 Click **Sources** in the top-right corner to open a full reference page listing all data sources, API endpoints, and country-specific notes.
 
+### 10. Shareable URLs
+Click the **Share** button (bar-chart icon) in the top-right corner to copy a shareable link to your clipboard. The full app state — selected countries, wage mode and value, career overrides, AW source, replacement-rate source, currency, and self-employment modes — is encoded as a compact URL hash fragment (e.g. `#c=DE,FR&wt=m&wv=1.0&rr=0.025`). Only values that differ from the defaults are included to keep URLs short. The hash is read on page load, so sharing or bookmarking the link restores the exact view.
+
 ---
 
 ## Tech Stack
@@ -184,6 +189,7 @@ Click **Sources** in the top-right corner to open a full reference page listing 
 | Charts | [Recharts](https://recharts.org/) |
 | Styling | [Tailwind CSS 3](https://tailwindcss.com/) |
 | Build tool | [Vite 5](https://vitejs.dev/) |
+| Analytics | [PostHog](https://posthog.com/) — EU cloud, opt-in only (`posthog-js` + `@posthog/react`) |
 | Deployment | [GitHub Pages](https://pages.github.com/) via GitHub Actions |
 
 No runtime API calls. All computation happens in the browser using pure functions with zero side effects — every result is fully reproducible and auditable.
@@ -233,6 +239,67 @@ Run the Phase 1 validation suite (checks all country configs compile and produce
 ```bash
 npm run validate
 ```
+
+---
+
+## Analytics & Privacy
+
+This project uses [PostHog](https://posthog.com/) (EU cloud, Frankfurt — AWS `eu-central-1`) for anonymous usage analytics. Analytics are **opt-in only**; no data is collected until the user actively accepts the consent banner.
+If you want to add to the PostHog project as collaborator, open an issue.
+
+### What is tracked
+
+| Event | Properties captured |
+|---|---|
+| `$pageview` | URL (no hash), browser, approximate country |
+| `country_selected` / `country_removed` | Country code, country name, selection count |
+| `wage_mode_changed` | Mode type (`multiplier` / `fixed_gross_eur` / `fixed_employer_cost_eur`), value |
+| `aw_source_changed` | Source (`model` / `oecd`) |
+| `career_override_changed` | Field name, value |
+| `fair_return_rate_changed` | Rate |
+| `se_mode_toggled` | Country code, mode name, SE type, action |
+| `comparison_charts_viewed` | Country codes, chart count |
+| `share_clicked` | Country codes, wage mode, AW source, RR source |
+| `sources_page_opened` | — |
+
+**Not tracked:** wage inputs, pension results, tax figures, any financial data, names, or emails. All form inputs are masked in session recordings.
+
+### GDPR compliance highlights
+
+- Legal basis: **Art. 6(1)(a) GDPR** (explicit consent) + Art. 5(3) ePrivacy Directive
+- Data processor: PostHog, Inc. under a signed [Data Processing Agreement](https://posthog.com/dpa)
+- Data location: EU only — never leaves Frankfurt
+- Storage: `localStorage` — no cookies set
+- Retention: 1 year (PostHog default)
+- PostHog is initialised with `opt_out_capturing_by_default: true` and `cookieless_mode: 'on_reject'`; it remains completely silent until the user clicks **Accept**
+- Session recordings are enabled post-consent with `maskAllInputs: true` (no typed values captured)
+- Data subject rights (access, erasure, restriction, withdrawal) exercised via [GitHub Issues](https://github.com/zdenk/PensionTaxExplorer/issues) labelled `GDPR request`
+
+### Configuring PostHog locally
+
+Copy `.env.example` to `.env.local` and fill in your PostHog project credentials:
+
+```bash
+cp pension-app/.env.example pension-app/.env.local
+```
+
+```
+VITE_PUBLIC_POSTHOG_TOKEN=phc_...
+VITE_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+```
+
+If `VITE_PUBLIC_POSTHOG_TOKEN` is absent, PostHog is silently disabled — the consent banner and privacy notice are still rendered but no data is sent anywhere.
+
+### GitHub Actions deployment
+
+The workflow injects the PostHog credentials from repository secrets at build time:
+
+| Secret | Description |
+|---|---|
+| `POSTHOG_TOKEN` | PostHog project API key (`phc_…`) |
+| `POSTHOG_HOST` | PostHog ingestion host (defaults to `https://eu.i.posthog.com`) |
+
+Add these under **Settings → Secrets and variables → Actions** in your GitHub repository.
 
 ---
 
@@ -312,7 +379,61 @@ https://zdenk.github.io/PensionTaxExplorer/
 
 ---
 
-## Scope & Limitations
+## SEO & Crawlability
+
+The `feature/seo-analytics` branch added a full SEO layer to make the tool discoverable by search engines and AI crawlers.
+
+### Head metadata (`index.html`)
+
+| Tag type | Coverage |
+|---|---|
+| Primary meta | `<title>`, `description`, `keywords`, `author`, `robots`, `canonical` |
+| Open Graph | `og:type`, `og:url`, `og:title`, `og:description`, `og:image` (1200×630), `og:site_name`, `og:locale` |
+| Twitter/X card | `twitter:card` (summary_large_image), `twitter:title`, `twitter:description`, `twitter:image` |
+| JSON-LD — WebApplication | Schema.org `WebApplication` with `applicationCategory`, `isAccessibleForFree`, `offers`, `author`, `codeRepository`, `license` |
+| JSON-LD — Dataset | Schema.org `Dataset` targeting Google Dataset Search; includes `keywords`, `temporalCoverage`, `spatialCoverage`, `distribution` |
+| PWA | `manifest.webmanifest`, `favicon.svg`, `theme-color`, mobile-web-app meta tags |
+
+### Static noscript content
+
+The `<noscript>` block in `index.html` provides a fully static HTML page for crawlers that cannot execute JavaScript. It contains:
+
+- A summary paragraph with the tool's key statistic (NL 96 % → LT 28 % replacement rate range)
+- A full OECD gross replacement rate table for all 22 countries at average wage, 50 % AW, and 2× AW
+- Four "Key concepts explained" sections (replacement rate, gross vs net RR, SSC, PAYG pensions, AW multiplier)
+- Six FAQ answers targeting long-tail queries (best EU pension, DE vs FR comparison, pension taxation, Italy's 91 % rate, personal planning disclaimer)
+
+### Per-country static pages
+
+The script `pension-app/scripts/generateCountryPages.ts` generates a static `index.html` for each of the 22 countries under `pension-app/public/<slug>/`. Each page contains:
+
+- Country-specific `<title>`, `description`, `canonical`, OG and Twitter tags, JSON-LD `WebPage` + `FAQPage` schemas
+- A static data table with the country's pension replacement rates, retirement age, SSC rates, average wage, and OECD benchmark
+- Four country-specific FAQ answers targeting "[Country] pension system", "How much pension [country]", etc.
+- A `<meta http-equiv="refresh">` redirect and inline JS that redirects to the SPA root with the country pre-selected in the hash (e.g. `#c=DE`)
+
+These pages are generated automatically before every build (`prebuild` npm script) and are included in the Vite output. They serve as real, indexable entry points for country-specific searches.
+
+Run the generator manually:
+
+```bash
+cd pension-app
+npm run generate:countries
+```
+
+### `robots.txt` — AI crawler permissions
+
+All major AI/LLM crawlers are explicitly permitted (GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot, GoogleExtended, Applebot-Extended, Amazonbot, YouBot). The file also references the `llms.txt` context file.
+
+### `llms.txt`
+
+`pension-app/public/llms.txt` follows the [llms.txt standard](https://llmstxt.org/) and provides LLM-friendly structured context about the tool: purpose, country list, data sources, limitations, and links to full documentation.
+
+### `sitemap.xml`
+
+Covers the root URL + all 22 country sub-pages with `changefreq: monthly` and `priority: 0.8`.
+
+---
 
 - Models a **single adult employee** with no tax-modifying personal circumstances (no children, not married, no disability).
 - **Out of scope in this version:** child tax credits, married couple filing, disability allowances, housing deductions, voluntary private pension top-ups.

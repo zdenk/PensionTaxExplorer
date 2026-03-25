@@ -2,7 +2,8 @@
  * App — EU27 Pension & Tax Burden Explorer
  */
 
-import { useReducer, useState } from 'react';
+import { useReducer, useState, useEffect, useRef } from 'react';
+import { usePostHog } from '@posthog/react';
 import { appReducer, INITIAL_STATE } from './state/appReducer';
 import { COUNTRY_MAP } from './data/countryRegistry';
 import { computeScenario } from './utils/computeScenario';
@@ -11,6 +12,9 @@ import { EUMap } from './components/EUMap';
 import { CountryCard } from './components/CountryCard';
 import { ComparisonCharts } from './components/ComparisonCharts';
 import { SourcesPage } from './components/SourcesPage';
+import { PrivacyNotice } from './components/PrivacyNotice';
+import { ConsentBanner } from './components/ConsentBanner';
+import { decodeHashToState, buildShareUrl } from './utils/shareUrl';
 import type { ScenarioResult } from './types';
 
 /** Stable key for a (country, mode) card column. */
@@ -19,8 +23,80 @@ function cardKey(code: string, modeName: string | null) {
 }
 
 export default function App() {
+  const posthog = usePostHog();
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
   const [showSources, setShowSources] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // Prevents the hash-write useEffect from re-triggering the hash-read on init
+  const skipHashRead = useRef(false);
+  // Track previous showComparison to fire event only on transition to true
+  const prevShowComparison = useRef(false);
+
+  // ── On mount: restore state from URL hash ──────────────────────────────────
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || hash === '#') return;
+    const decoded = decodeHashToState(hash);
+    skipHashRead.current = true;
+    if (decoded.selectedCountries) {
+      dispatch({ type: 'SET_COUNTRIES', codes: decoded.selectedCountries });
+    }
+    if (decoded.wageMode) {
+      dispatch({ type: 'SET_WAGE_MODE', mode: decoded.wageMode });
+    }
+    if (decoded.awSource) {
+      dispatch({ type: 'SET_AW_SOURCE', source: decoded.awSource });
+    }
+    if (decoded.rrSource) {
+      dispatch({ type: 'SET_RR_SOURCE', source: decoded.rrSource });
+    }
+    if (decoded.fairReturnRate != null) {
+      dispatch({ type: 'SET_FAIR_RETURN_RATE', rate: decoded.fairReturnRate });
+    }
+    if (decoded.currency) {
+      dispatch({ type: 'SET_CURRENCY', currency: decoded.currency });
+    }
+    if (decoded.careerOverrides) {
+      for (const [key, value] of Object.entries(decoded.careerOverrides) as [keyof typeof decoded.careerOverrides, number][]) {
+        if (value != null) dispatch({ type: 'SET_CAREER_OVERRIDE', key, value });
+      }
+    }
+    // selfEmploymentModes via SET_SELF_EMPLOYMENT_MODE is complex; skip for now
+    // (mode state will fall back to default employee)
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sync state → URL hash (debounced 400 ms) ──────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hash = buildShareUrl(state);
+      const newHash = '#' + new URL(hash).hash.slice(1);
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', hash);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // ── Share handler ──────────────────────────────────────────────────────────
+  function handleShare() {
+    const url = buildShareUrl(state);
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+    posthog?.capture('share_clicked', {
+      country_codes: state.selectedCountries,
+      wage_mode_type: state.wageMode.type,
+      wage_mode_value: state.wageMode.value,
+      aw_source: state.awSource,
+      rr_source: state.rrSource,
+      fair_return_rate: state.fairReturnRate,
+      career_overrides: Object.keys(state.careerOverrides).length > 0
+        ? JSON.stringify(state.careerOverrides)
+        : null,
+    });
+  }
 
   // Build card specs: one per (country, mode) pair, in country-selection order.
   // Each spec produces a separate column.
@@ -65,6 +141,17 @@ export default function App() {
   const showComparison =
     state.wageMode.type !== 'multiplier' && comparisonEntries.length >= 2;
 
+  // Fire comparison_charts_viewed when the panel first becomes visible
+  useEffect(() => {
+    if (showComparison && !prevShowComparison.current) {
+      posthog?.capture('comparison_charts_viewed', {
+        country_codes: state.selectedCountries,
+        chart_count: comparisonEntries.length,
+      });
+    }
+    prevShowComparison.current = showComparison;
+  }, [showComparison]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       {/* App header */}
@@ -77,7 +164,29 @@ export default function App() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowSources(s => !s)}
+            onClick={handleShare}
+            title="Copy shareable link to clipboard"
+            className={`text-xs px-3 py-1 rounded border transition-colors flex items-center gap-1.5 ${
+              copied
+                ? 'bg-emerald-700 border-emerald-500 text-white'
+                : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+            }`}
+          >
+            {/* Share / upload icon — arrow out of box */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              width="12"
+              height="12"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M7.47 1.22a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1-1.06 1.06L8.75 3.56v6.19a.75.75 0 0 1-1.5 0V3.56L5.53 5.28a.75.75 0 0 1-1.06-1.06l3-3ZM2.75 11a.75.75 0 0 1 .75.75v1.5h9v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-1.5A.75.75 0 0 1 2.75 11Z" />
+            </svg>
+            {copied ? 'Copied!' : 'Share'}
+          </button>
+          <button
+            onClick={() => { setShowSources(s => !s); if (!showSources) posthog?.capture('sources_page_opened'); }}
             className={`text-xs px-3 py-1 rounded border transition-colors ${
               showSources
                 ? 'bg-sky-700 border-sky-500 text-white'
@@ -171,14 +280,26 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 px-4 py-2 text-xs text-slate-600 shrink-0 flex justify-between">
+      <footer className="border-t border-slate-800 px-4 py-2 text-xs text-slate-600 shrink-0 flex justify-between items-center gap-4">
         <span>
           Sources: OECD Taxing Wages · MISSOC · Eurostat · ECB · National social insurance authorities
         </span>
-        <span className="text-slate-500">
-          Constant Prices (real terms) · Funded returns 2–3% real net-of-fees · Single adult earner · Standard employment · No personal circumstances modelled
+        <span className="text-slate-500 flex items-center gap-2 shrink-0">
+          Anonymous analytics via PostHog (EU){' ·'}
+          <button
+            onClick={() => setShowPrivacy(true)}
+            className="underline hover:text-slate-300 transition-colors"
+          >
+            Privacy
+          </button>
         </span>
       </footer>
+
+      {/* Consent banner — first-visit opt-in (hidden once a choice is stored) */}
+      <ConsentBanner onShowPrivacy={() => setShowPrivacy(true)} />
+
+      {/* Privacy notice modal */}
+      {showPrivacy && <PrivacyNotice onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 }

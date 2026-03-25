@@ -57,3 +57,6 @@ EUROMOD/*
 !EUROMOD/Documentation/
 EUROMOD/Documentation/*
 !EUROMOD/Documentation/EUROMOD policy parameters J2.0+.xlsx
+
+# Integration thoughts
+docs/posthog_integration_design.md

@@ -16,6 +16,7 @@ import { WagePieChart } from './Graph2_Accumulation';
 import { Graph3_ReplacementRateCurve } from './Graph3_ReplacementRateCurve';
 import { WageDistributionChart } from './WageDistributionChart';
 import { useState } from 'react';
+import { usePostHog } from '@posthog/react';
 
 interface Props {
   country: CountryConfig;
@@ -71,6 +72,7 @@ function CountryHeader({
   grossMonthly: number;
   appState: AppState;
 }) {
+  const posthog = usePostHog();
   const systemType  = country.pensionSystem.type;
   const seAvailable = country.selfEmployment?.available === true;
   const seModes     = country.selfEmployment?.modes ?? [];
@@ -144,7 +146,17 @@ function CountryHeader({
                 <button
                   key={String(name)}
                   disabled={disabled}
-                  onClick={() => dispatch({ type: 'SET_SELF_EMPLOYMENT_MODE', countryCode: country.code, modeName: name })}
+                  onClick={() => {
+                    dispatch({ type: 'SET_SELF_EMPLOYMENT_MODE', countryCode: country.code, modeName: name });
+                    if (isOSVC) {
+                      posthog?.capture('se_mode_toggled', {
+                        country_code: country.code,
+                        mode_name: String(name),
+                        se_type: seMode?.pausalniDan ? 'pausalni_dan' : 'osvc',
+                        action: isActive ? 'removed' : 'added',
+                      });
+                    }
+                  }}
                   title={
                     disabled ? `Card limit (${MAX_CARDS}) reached — remove another mode first`
                     : seMode?.pausalniDan
