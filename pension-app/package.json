@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:countries": "tsx scripts/generateCountryPages.ts",
+    "prebuild": "tsx scripts/generateCountryPages.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "validate": "tsx src/validation/phase1Validate.ts",
