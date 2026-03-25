@@ -172,7 +172,7 @@ export default function App() {
                 : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
             }`}
           >
-            {/* Bar-chart icon */}
+            {/* Share / upload icon — arrow out of box */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 16 16"
@@ -181,9 +181,7 @@ export default function App() {
               fill="currentColor"
               aria-hidden="true"
             >
-              <rect x="1" y="9" width="3" height="6" rx="0.5" />
-              <rect x="6" y="5" width="3" height="10" rx="0.5" />
-              <rect x="11" y="1" width="3" height="14" rx="0.5" />
+              <path d="M7.47 1.22a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1-1.06 1.06L8.75 3.56v6.19a.75.75 0 0 1-1.5 0V3.56L5.53 5.28a.75.75 0 0 1-1.06-1.06l3-3ZM2.75 11a.75.75 0 0 1 .75.75v1.5h9v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-1.5A.75.75 0 0 1 2.75 11Z" />
             </svg>
             {copied ? 'Copied!' : 'Share'}
           </button>
