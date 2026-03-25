@@ -39,6 +39,8 @@ jobs:
         env:
           # Sets the Vite base path to /<repo-name>/ so all asset URLs are correct.
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_PUBLIC_POSTHOG_TOKEN: ${{ secrets.POSTHOG_TOKEN }}
+          VITE_PUBLIC_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: npm run build
 
       - name: Upload artifact

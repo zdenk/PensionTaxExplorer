@@ -13,7 +13,9 @@
     "diff:country": "tsx scripts/euromod/diffAll.ts --country"
   },
   "dependencies": {
+    "@posthog/react": "^1.8.2",
     "plotly.js-geo-dist-min": "^3.4.0",
+    "posthog-js": "^1.363.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-plotly.js": "^2.6.0",

@@ -3,6 +3,7 @@
  */
 
 import { useReducer, useState, useEffect, useRef } from 'react';
+import { usePostHog } from '@posthog/react';
 import { appReducer, INITIAL_STATE } from './state/appReducer';
 import { COUNTRY_MAP } from './data/countryRegistry';
 import { computeScenario } from './utils/computeScenario';
@@ -11,6 +12,8 @@ import { EUMap } from './components/EUMap';
 import { CountryCard } from './components/CountryCard';
 import { ComparisonCharts } from './components/ComparisonCharts';
 import { SourcesPage } from './components/SourcesPage';
+import { PrivacyNotice } from './components/PrivacyNotice';
+import { ConsentBanner } from './components/ConsentBanner';
 import { decodeHashToState, buildShareUrl } from './utils/shareUrl';
 import type { ScenarioResult } from './types';
 
@@ -20,11 +23,15 @@ function cardKey(code: string, modeName: string | null) {
 }
 
 export default function App() {
+  const posthog = usePostHog();
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
   const [showSources, setShowSources] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [copied, setCopied] = useState(false);
   // Prevents the hash-write useEffect from re-triggering the hash-read on init
   const skipHashRead = useRef(false);
+  // Track previous showComparison to fire event only on transition to true
+  const prevShowComparison = useRef(false);
 
   // ── On mount: restore state from URL hash ──────────────────────────────────
   useEffect(() => {
@@ -78,6 +85,17 @@ export default function App() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+    posthog?.capture('share_clicked', {
+      country_codes: state.selectedCountries,
+      wage_mode_type: state.wageMode.type,
+      wage_mode_value: state.wageMode.value,
+      aw_source: state.awSource,
+      rr_source: state.rrSource,
+      fair_return_rate: state.fairReturnRate,
+      career_overrides: Object.keys(state.careerOverrides).length > 0
+        ? JSON.stringify(state.careerOverrides)
+        : null,
+    });
   }
 
   // Build card specs: one per (country, mode) pair, in country-selection order.
@@ -123,6 +141,17 @@ export default function App() {
   const showComparison =
     state.wageMode.type !== 'multiplier' && comparisonEntries.length >= 2;
 
+  // Fire comparison_charts_viewed when the panel first becomes visible
+  useEffect(() => {
+    if (showComparison && !prevShowComparison.current) {
+      posthog?.capture('comparison_charts_viewed', {
+        country_codes: state.selectedCountries,
+        chart_count: comparisonEntries.length,
+      });
+    }
+    prevShowComparison.current = showComparison;
+  }, [showComparison]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       {/* App header */}
@@ -159,7 +188,7 @@ export default function App() {
             {copied ? 'Copied!' : 'Share'}
           </button>
           <button
-            onClick={() => setShowSources(s => !s)}
+            onClick={() => { setShowSources(s => !s); if (!showSources) posthog?.capture('sources_page_opened'); }}
             className={`text-xs px-3 py-1 rounded border transition-colors ${
               showSources
                 ? 'bg-sky-700 border-sky-500 text-white'
@@ -253,14 +282,26 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 px-4 py-2 text-xs text-slate-600 shrink-0 flex justify-between">
+      <footer className="border-t border-slate-800 px-4 py-2 text-xs text-slate-600 shrink-0 flex justify-between items-center gap-4">
         <span>
           Sources: OECD Taxing Wages · MISSOC · Eurostat · ECB · National social insurance authorities
         </span>
-        <span className="text-slate-500">
-          Constant Prices (real terms) · Funded returns 2–3% real net-of-fees · Single adult earner · Standard employment · No personal circumstances modelled
+        <span className="text-slate-500 flex items-center gap-2 shrink-0">
+          Anonymous analytics via PostHog (EU){' ·'}
+          <button
+            onClick={() => setShowPrivacy(true)}
+            className="underline hover:text-slate-300 transition-colors"
+          >
+            Privacy
+          </button>
         </span>
       </footer>
+
+      {/* Consent banner — first-visit opt-in (hidden once a choice is stored) */}
+      <ConsentBanner onShowPrivacy={() => setShowPrivacy(true)} />
+
+      {/* Privacy notice modal */}
+      {showPrivacy && <PrivacyNotice onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 }

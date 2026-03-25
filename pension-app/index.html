@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary meta -->
-    <title>EU27 Pension &amp; Tax Burden Explorer</title>
-    <meta name="description" content="Compare pension outcomes, replacement rates, and tax burdens across 22 EU OECD member states. Free, interactive, browser-only tool using EUROMOD parameters." />
+    <title>Compare EU Pension &amp; Tax Burdens | 22 Countries – Free Tool</title>
+    <meta name="description" content="Compare statutory pension replacement rates, income tax, and SSC burdens across 22 EU countries — Germany, France, Italy, Netherlands and more. Free interactive tool, no login." />
     <meta name="keywords" content="EU pension comparison, European pension systems, retirement income Europe, tax burden EU, EUROMOD, replacement rate, pension calculator" />
     <meta name="author" content="PensionTaxExplorer" />
     <meta name="robots" content="index, follow" />
@@ -17,8 +17,8 @@
     <!-- Open Graph (LinkedIn, Facebook, Slack previews) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://zdenk.github.io/PensionTaxExplorer/" />
-    <meta property="og:title" content="EU27 Pension &amp; Tax Burden Explorer" />
-    <meta property="og:description" content="Explore and compare how much of your career earnings translate into retirement pension across 22 EU countries. Free interactive tool." />
+    <meta property="og:title" content="Compare EU Pension &amp; Tax Burdens | 22 Countries – Free Tool" />
+    <meta property="og:description" content="How much pension will you get in Germany vs Italy vs Ireland? Compare statutory replacement rates, income tax, and SSC burdens across 22 EU countries. Free, no login." />
     <meta property="og:image" content="https://zdenk.github.io/PensionTaxExplorer/og-preview.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -27,8 +27,8 @@
 
     <!-- Twitter / X card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="EU27 Pension &amp; Tax Burden Explorer" />
-    <meta name="twitter:description" content="Free interactive comparison of pension systems and tax burdens across 22 EU OECD countries." />
+    <meta name="twitter:title" content="Compare EU Pension &amp; Tax Burdens | 22 Countries – Free Tool" />
+    <meta name="twitter:description" content="Compare statutory pension replacement rates and tax burdens across Germany, France, Italy, Netherlands and 18 other EU countries. Free, no login." />
     <meta name="twitter:image" content="https://zdenk.github.io/PensionTaxExplorer/og-preview.png" />
 
     <!-- Structured data — WebApplication -->
@@ -53,8 +53,10 @@
         "name": "European Pension Systems",
         "description": "Statutory pension and tax comparison across EU member states"
       },
+      "dateModified": "2026-03-25",
       "author": {
         "@type": "Person",
+        "name": "zdenk",
         "url": "https://github.com/zdenk"
       },
       "codeRepository": "https://github.com/zdenk/PensionTaxExplorer",
@@ -70,6 +72,7 @@
       "name": "EU27 Statutory Pension & Tax Parameters",
       "description": "Statutory pension formula parameters, income tax brackets, employee and employer social security contribution rates, and average wages for 22 EU OECD member states. Sourced from OECD Taxing Wages, MISSOC, Eurostat, and national authorities. Updated for 2025/2026 tax year.",
       "url": "https://zdenk.github.io/PensionTaxExplorer/",
+      "dateModified": "2026-03-25",
       "sameAs": "https://github.com/zdenk/PensionTaxExplorer",
       "license": "https://opensource.org/licenses/MIT",
       "isAccessibleForFree": true,
@@ -85,6 +88,7 @@
       },
       "creator": {
         "@type": "Person",
+        "name": "zdenk",
         "url": "https://github.com/zdenk"
       },
       "includedInDataCatalog": {
@@ -119,28 +123,98 @@
 
     <!-- Static summary for crawlers that cannot run JavaScript -->
     <noscript>
-      <main style="font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;color:#1e293b">
-        <h1>EU27 Pension &amp; Tax Burden Explorer</h1>
-        <p>
-          An interactive tool for comparing statutory pension outcomes, replacement rates, and
-          income tax &amp; social security contribution burdens across 22 EU OECD member states:
-          Austria, Belgium, Czech Republic, Denmark, Estonia, Finland, France, Germany, Greece,
-          Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta, Netherlands, Poland,
-          Portugal, Slovakia, Slovenia and Spain.
+      <main style="font-family:sans-serif;max-width:760px;margin:2rem auto;padding:0 1.25rem;color:#1e293b;line-height:1.6">
+
+        <h1 style="font-size:1.75rem;margin-bottom:.5rem">Compare EU Pension &amp; Tax Burdens Across 22 Countries</h1>
+        <p style="font-size:1.05rem;margin-top:0">
+          <strong>Quick answer:</strong> A typical earner in the Netherlands keeps 96&nbsp;% of their pre-retirement gross wage as pension;
+          in Lithuania the figure is just 28&nbsp;%. The EU average sits around 65&nbsp;%.
+          The gap is driven by contribution rates, benefit formulas, and retirement ages — not simply how much workers pay in.
+          This free, interactive tool lets you compare any combination of the 22 EU OECD countries side-by-side.
+          <em>Please enable JavaScript to use the interactive application.</em>
         </p>
+
+        <h2 style="margin-top:2rem">OECD Gross Pension Replacement Rates at Average Wage (2023)</h2>
         <p>
-          All calculations run entirely in your browser using EUROMOD-derived parameters sourced
-          from OECD Taxing Wages, MISSOC, Eurostat, and national social insurance authorities.
-          No account or backend required. Free to use.
+          The table below shows the <strong>gross pension replacement rate</strong> at 1.0&times; the country average wage,
+          the statutory normal retirement age (men), and three related metrics available in the interactive tool.
+          Source: OECD <em>Pensions at a Glance 2023</em>, mandatory public pension only.
         </p>
-        <p>
-          Features include: career timeline visualisation, pension accumulation chart,
-          replacement rate curves by wage level, KPI comparison across countries,
-          side-by-side country cards, and a choropleth EU map.
-        </p>
-        <p>
-          Please enable JavaScript to use the interactive application.
-          <a href="https://github.com/zdenk/PensionTaxExplorer">View source on GitHub</a>.
+        <table style="border-collapse:collapse;width:100%;font-size:.9rem">
+          <thead>
+            <tr style="background:#0f172a;color:#f8fafc">
+              <th style="text-align:left;padding:.45rem .6rem;border:1px solid #334155">Country</th>
+              <th style="text-align:center;padding:.45rem .6rem;border:1px solid #334155">Pension age</th>
+              <th style="text-align:center;padding:.45rem .6rem;border:1px solid #334155">Gross RR at avg wage</th>
+              <th style="text-align:center;padding:.45rem .6rem;border:1px solid #334155">Gross RR at 50&nbsp;% avg wage</th>
+              <th style="text-align:center;padding:.45rem .6rem;border:1px solid #334155">Gross RR at 2&times; avg wage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇳🇱 Netherlands</td><td style="text-align:center;border:1px solid #e2e8f0">70</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>96.0&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">97.2&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">89.7&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇮🇹 Italy</td><td style="text-align:center;border:1px solid #e2e8f0">71</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>91.1&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">91.1&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">91.1&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇱🇺 Luxembourg</td><td style="text-align:center;border:1px solid #e2e8f0">62</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>87.7&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">97.2&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">79.4&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇦🇹 Austria</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>86.8&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">84.8&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">62.4&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇸🇰 Slovakia</td><td style="text-align:center;border:1px solid #e2e8f0">69</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>76.3&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">85.7&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">68.2&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇩🇰 Denmark</td><td style="text-align:center;border:1px solid #e2e8f0">74</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>77.1&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">116.7&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">63.6&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇭🇺 Hungary</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>73.4&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">76.9&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">73.4&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇪🇸 Spain</td><td style="text-align:center;border:1px solid #e2e8f0">67</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>72.3&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">80.1&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">50.6&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇫🇷 France</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>70.0&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">66.1&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">58.9&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇵🇹 Portugal</td><td style="text-align:center;border:1px solid #e2e8f0">67</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>67.9&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">79.4&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">62.0&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇸🇪 Sweden</td><td style="text-align:center;border:1px solid #e2e8f0">70</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>66.3&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">67.4&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">84.4&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇫🇮 Finland</td><td style="text-align:center;border:1px solid #e2e8f0">68</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>65.7&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">63.8&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">63.9&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇧🇪 Belgium</td><td style="text-align:center;border:1px solid #e2e8f0">67</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>61.1&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">80.9&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">42.5&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇸🇮 Slovenia</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>56.1&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">57.4&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">47.0&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇩🇪 Germany</td><td style="text-align:center;border:1px solid #e2e8f0">67</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>53.3&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">57.7&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">38.8&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇬🇷 Greece</td><td style="text-align:center;border:1px solid #e2e8f0">67</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>53.7&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">75.5&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">44.1&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇱🇻 Latvia</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>52.2&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">64.5&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">51.4&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇨🇿 Czech Republic</td><td style="text-align:center;border:1px solid #e2e8f0">67</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>44.2&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">71.4&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">30.6&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇵🇱 Poland</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>40.6&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">40.9&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">37.2&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇪🇪 Estonia</td><td style="text-align:center;border:1px solid #e2e8f0">71</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>37.8&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">56.2&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">23.9&nbsp;%</td></tr>
+            <tr><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇮🇪 Ireland</td><td style="text-align:center;border:1px solid #e2e8f0">66</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>33.7&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">56.5&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">20.1&nbsp;%</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:.4rem .6rem;border:1px solid #e2e8f0">🇱🇹 Lithuania</td><td style="text-align:center;border:1px solid #e2e8f0">65</td><td style="text-align:center;border:1px solid #e2e8f0"><strong>28.2&nbsp;%</strong></td><td style="text-align:center;border:1px solid #e2e8f0">36.9&nbsp;%</td><td style="text-align:center;border:1px solid #e2e8f0">21.0&nbsp;%</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:.8rem;color:#64748b">Source: OECD <em>Pensions at a Glance 2023</em>, mandatory public pension, gross replacement rates, men retiring at normal pension age. For illustrative purposes only.</p>
+
+        <h2 style="margin-top:2rem">Key concepts explained</h2>
+
+        <h3>What is a pension replacement rate?</h3>
+        <p>The <strong>replacement rate</strong> is monthly pension income ÷ pre-retirement gross monthly wage, expressed as a percentage. A 70&nbsp;% gross replacement rate means a worker earning €3,000/month before retirement receives €2,100/month in pension. It is the single most useful summary of how generous a pension system is relative to prior earnings. Note that gross and net (after-tax) replacement rates can differ significantly: countries with high pension taxes narrow the net gap more than their gross rate suggests.</p>
+
+        <h3>What is the difference between gross and net replacement rate?</h3>
+        <p>The <strong>gross replacement rate</strong> compares pre-tax pension to pre-tax wage. The <strong>net replacement rate</strong> compares post-tax pension to post-tax wage — and is generally higher, because pension income is taxed more lightly (or not at all) in many countries. The interactive tool shows both, plus the income tax and SSC breakdown at each wage level.</p>
+
+        <h3>What are social security contributions (SSC)?</h3>
+        <p>Social security contributions (SSC) are mandatory payroll levies paid by employees and employers to fund pension, health, and unemployment insurance schemes. In high-SSC countries like France and the Netherlands, employer contributions can exceed 30&nbsp;% of gross wage on top of the employee share. The tool shows how SSC is split between pension, health, and other funds for each country and wage level.</p>
+
+        <h3>What is a PAYG pension?</h3>
+        <p>A <strong>pay-as-you-go (PAYG)</strong> pension — most EU countries use this — funds current retiree pensions from contributions paid today by workers. Contrast this with a <strong>funded</strong> system, where contributions are invested and returned to the same worker later. Most EU statutory pensions are DB (defined benefit) PAYG. A few (Italy, Poland, Sweden, Latvia, Estonia) use Notional Defined Contribution (NDC) accounts that mimic funded logic within a PAYG structure.</p>
+
+        <h3>What is the average wage multiplier?</h3>
+        <p>The average wage (AW) multiplier expresses gross wage as a fraction of the country's national average wage. A value of 1.0 means the average earner; 0.67 approximates the median in most EU countries (the median is lower than the mean because wage distributions are right-skewed); 2.0 means twice the average. Comparing replacement rates at different AW multiples reveals how redistributive a pension system is: systems with a large flat-rate component (like Ireland or Denmark) are more generous to low earners; strictly proportional systems (like Italy or Hungary) give the same rate at all wage levels.</p>
+
+        <h2 style="margin-top:2rem">Frequently asked questions</h2>
+
+        <h3>Which EU country has the best pension system?</h3>
+        <p>It depends what you optimise for. By gross replacement rate at average wage, the Netherlands (96&nbsp;%), Italy (91&nbsp;%), and Luxembourg (87.7&nbsp;%) are highest. But the Netherlands requires working until 70 and has high employer SSC; Luxembourg has the earliest retirement age (62). By net replacement rate after income tax and SSC, the ranking shifts. The interactive tool lets you compare net outcomes side-by-side and adjust career length, wage level, and retirement age.</p>
+
+        <h3>How does the German pension compare to France?</h3>
+        <p>Germany's gross replacement rate (53.3&nbsp;%) at the average wage is notably lower than France's (70.0&nbsp;%). Germany uses a points-based system where pensions scale proportionally with lifetime earnings, while France combines a basic PAYG scheme (Régime Général) with a mandatory supplementary PAYG points system (AGIRC-ARRCO). Both retire at 65–67; employee+employer SSC also differ. The tool allows a direct side-by-side comparison including net wages, career contributions, and break-even age.</p>
+
+        <h3>Do EU countries tax pension income?</h3>
+        <p>Most EU countries apply income tax to pensions, but typically at a lower effective rate than active wages due to lower pension amounts sitting in lower tax brackets and in some countries favourable pension-specific deductions. The tool models basic statutory income tax on pension income for each country.</p>
+
+        <h3>Why is Italy's replacement rate 91 % at every wage level?</h3>
+        <p>Italy uses a purely proportional NDC (Notional Defined Contribution) system introduced in 1995 (Dini reform). Because contributions are credited as a fixed percentage of every euro earned regardless of wage level, the replacement rate is mathematically identical at 0.5×, 1.0×, and 2.0× average wage. This makes it one of the least redistributive systems in the EU, though conversely the most predictable.</p>
+
+        <h3>Can I use this for personal retirement planning?</h3>
+        <p>This tool is for illustrative and educational purposes only — <strong>not financial advice</strong>. It models statutory (Pillar 1) pensions using simplified formulas and does not account for individual career gaps, occupational pensions (Pillar 2), voluntary savings (Pillar 3), future legislative changes, or personal tax circumstances. Always consult a qualified financial adviser before making retirement decisions.
+        <a href="https://github.com/zdenk/PensionTaxExplorer">View source and data on GitHub</a>.</p>
+
+        <p style="margin-top:2rem;font-size:.8rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:1rem">
+          <em>Last updated: March 2026. Data sources: OECD Taxing Wages 2025, OECD Pensions at a Glance 2023, MISSOC, Eurostat, ECB, national social insurance authorities.
+          Parameters not independently audited. For illustrative purposes only. Not financial or actuarial advice.</em>
         </p>
       </main>
     </noscript>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EU27 Pension &amp; Tax Burden Explorer</title>
+    <meta name="robots" content="noindex" />
+    <!--
+      GitHub Pages serves this file for any path that doesn't exist on disk.
+      We redirect immediately to the app root so bookmarks and shared links
+      always land in the SPA rather than a dead-end 404 page.
+    -->
+    <script>
+      // Preserve any hash fragment the user may have navigated to
+      var hash = window.location.hash;
+      window.location.replace(
+        '/PensionTaxExplorer/' + (hash || '')
+      );
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0; url=/PensionTaxExplorer/" />
+    </noscript>
+  </head>
+  <body>
+    <p style="font-family:sans-serif;text-align:center;margin-top:4rem;color:#94a3b8">
+      Redirecting to
+      <a href="/PensionTaxExplorer/" style="color:#38bdf8">EU27 Pension &amp; Tax Burden Explorer</a>…
+    </p>
+  </body>
+</html>

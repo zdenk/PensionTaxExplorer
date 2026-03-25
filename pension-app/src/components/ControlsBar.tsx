@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { usePostHog } from '@posthog/react';
 import type { AppState, WageMode, CareerDefaults } from '../types';
 import type { AppAction } from '../state/appReducer';
 import { needsEurLock, totalActiveCards, MAX_CARDS } from '../state/appReducer';
@@ -27,6 +28,7 @@ function getEffectiveAW(country: { averageWage: number; oecdAverageWage?: number
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function AWSourceToggle({ state, dispatch }: { state: AppState; dispatch: React.Dispatch<AppAction> }) {
+  const posthog = usePostHog();
   const active  = 'bg-sky-600 border-sky-500 text-white';
   const inactive = 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600';
   return (
@@ -34,7 +36,7 @@ function AWSourceToggle({ state, dispatch }: { state: AppState; dispatch: React.
       <span className="text-xs text-slate-500 uppercase tracking-wide">AW source</span>
       <div className="flex">
         <button
-          onClick={() => dispatch({ type: 'SET_AW_SOURCE', source: 'model' })}
+          onClick={() => { dispatch({ type: 'SET_AW_SOURCE', source: 'model' }); posthog?.capture('aw_source_changed', { source: 'model' }); }}
           title="Use model/national-statistics average wage"
           className={`px-3 py-1.5 text-sm rounded-l-md border-y border-l border-r-0 transition-colors ${
             state.awSource === 'model' ? active : inactive
@@ -43,7 +45,7 @@ function AWSourceToggle({ state, dispatch }: { state: AppState; dispatch: React.
           Model
         </button>
         <button
-          onClick={() => dispatch({ type: 'SET_AW_SOURCE', source: 'oecd' })}
+          onClick={() => { dispatch({ type: 'SET_AW_SOURCE', source: 'oecd' }); posthog?.capture('aw_source_changed', { source: 'oecd' }); }}
           title="Use OECD Taxing Wages 2025 average wage (2024 data)"
           className={`px-3 py-1.5 text-sm rounded-r-md border transition-colors ${
             state.awSource === 'oecd' ? active : inactive
@@ -87,12 +89,13 @@ function RRSourceToggle({ state, dispatch }: { state: AppState; dispatch: React.
 }
 
 function WageModeToggle({ mode, dispatch }: { mode: WageMode; dispatch: React.Dispatch<AppAction> }) {
+  const posthog = usePostHog();
   const activeClass = 'bg-sky-600 border-sky-500 text-white';
   const inactiveClass = 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600';
   return (
     <div className="flex">
       <button
-        onClick={() => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'multiplier', value: mode.type === 'multiplier' ? mode.value : 1.0 } })}
+        onClick={() => { const m = { type: 'multiplier' as const, value: mode.type === 'multiplier' ? mode.value : 1.0 }; dispatch({ type: 'SET_WAGE_MODE', mode: m }); posthog?.capture('wage_mode_changed', { mode_type: m.type, value: m.value }); }}
         className={`px-3 py-1.5 text-sm rounded-l-md border-y border-l border-r-0 transition-colors ${
           mode.type === 'multiplier' ? activeClass : inactiveClass
         }`}
@@ -100,12 +103,7 @@ function WageModeToggle({ mode, dispatch }: { mode: WageMode; dispatch: React.Di
         × of AW
       </button>
       <button
-        onClick={() => dispatch({ type: 'SET_WAGE_MODE', mode: {
-          type: 'fixed_gross_eur',
-          value: mode.type === 'fixed_gross_eur' ? mode.value
-               : mode.type === 'fixed_employer_cost_eur' ? Math.round(mode.value * 0.77)
-               : Math.round(mode.value * 3000) || 3000,
-        }})}
+        onClick={() => { const m = { type: 'fixed_gross_eur' as const, value: mode.type === 'fixed_gross_eur' ? mode.value : mode.type === 'fixed_employer_cost_eur' ? Math.round(mode.value * 0.77) : Math.round(mode.value * 3000) || 3000 }; dispatch({ type: 'SET_WAGE_MODE', mode: m }); posthog?.capture('wage_mode_changed', { mode_type: m.type, value: m.value }); }}
         className={`px-3 py-1.5 text-sm border transition-colors ${
           mode.type === 'fixed_gross_eur' ? activeClass : inactiveClass
         }`}
@@ -113,12 +111,7 @@ function WageModeToggle({ mode, dispatch }: { mode: WageMode; dispatch: React.Di
         Fixed Gross
       </button>
       <button
-        onClick={() => dispatch({ type: 'SET_WAGE_MODE', mode: {
-          type: 'fixed_employer_cost_eur',
-          value: mode.type === 'fixed_employer_cost_eur' ? mode.value
-               : mode.type === 'fixed_gross_eur' ? Math.round(mode.value * 1.30)
-               : Math.round(mode.value * 4000) || 5000,
-        }})}
+        onClick={() => { const m = { type: 'fixed_employer_cost_eur' as const, value: mode.type === 'fixed_employer_cost_eur' ? mode.value : mode.type === 'fixed_gross_eur' ? Math.round(mode.value * 1.30) : Math.round(mode.value * 4000) || 5000 }; dispatch({ type: 'SET_WAGE_MODE', mode: m }); posthog?.capture('wage_mode_changed', { mode_type: m.type, value: m.value }); }}
         className={`px-3 py-1.5 text-sm rounded-r-md border-y border-r border-l-0 transition-colors ${
           mode.type === 'fixed_employer_cost_eur' ? activeClass : inactiveClass
         }`}
@@ -130,6 +123,7 @@ function WageModeToggle({ mode, dispatch }: { mode: WageMode; dispatch: React.Di
 }
 
 function MultiplierInput({ mode, dispatch }: { mode: WageMode; dispatch: React.Dispatch<AppAction> }) {
+  const posthog = usePostHog();
   const value = mode.type === 'multiplier' ? mode.value : 1.0;
   return (
     <div className="space-y-2">
@@ -137,6 +131,7 @@ function MultiplierInput({ mode, dispatch }: { mode: WageMode; dispatch: React.D
         <input
           type="range" min={0.25} max={5.0} step={0.25} value={value}
           onChange={e => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'multiplier', value: parseFloat(e.target.value) } })}
+          onPointerUp={e => posthog?.capture('wage_mode_changed', { mode_type: 'multiplier', value: parseFloat((e.target as HTMLInputElement).value) })}
           className="w-40 accent-sky-500"
         />
         <span className="text-sky-400 font-mono font-semibold w-12">{value.toFixed(2)}×</span>
@@ -145,7 +140,7 @@ function MultiplierInput({ mode, dispatch }: { mode: WageMode; dispatch: React.D
         {MULTIPLIER_PRESETS.map(p => (
           <button
             key={p}
-            onClick={() => dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'multiplier', value: p } })}
+            onClick={() => { dispatch({ type: 'SET_WAGE_MODE', mode: { type: 'multiplier', value: p } }); posthog?.capture('wage_mode_changed', { mode_type: 'multiplier', value: p }); }}
             className={`px-2 py-0.5 text-xs rounded border transition-colors ${
               value === p
                 ? 'bg-sky-600 border-sky-500 text-white'
@@ -325,6 +320,7 @@ function CurrencyToggle({ state, dispatch }: { state: AppState; dispatch: React.
 }
 
 function CareerOverridePanel({ state, dispatch }: { state: AppState; dispatch: React.Dispatch<AppAction> }) {
+  const posthog = usePostHog();
   const [open, setOpen] = useState(false);
   const ov = state.careerOverrides;
 
@@ -365,6 +361,7 @@ function CareerOverridePanel({ state, dispatch }: { state: AppState; dispatch: R
                 <input
                   type="range" min={min} max={max} step={1} value={val}
                   onChange={e => dispatch({ type: 'SET_CAREER_OVERRIDE', key, value: parseInt(e.target.value, 10) })}
+                  onPointerUp={e => posthog?.capture('career_override_changed', { field: key, value: parseInt((e.target as HTMLInputElement).value, 10) })}
                   className="w-full accent-sky-500"
                 />
               </div>
@@ -385,6 +382,7 @@ function CareerOverridePanel({ state, dispatch }: { state: AppState; dispatch: R
             <input
               type="range" min={0.01} max={0.03} step={0.005} value={state.fairReturnRate}
               onChange={e => dispatch({ type: 'SET_FAIR_RETURN_RATE', rate: parseFloat(e.target.value) })}
+              onPointerUp={e => posthog?.capture('fair_return_rate_changed', { rate: parseFloat((e.target as HTMLInputElement).value) })}
               className="w-full accent-violet-500"
             />
             <div className="flex justify-between text-[10px] text-slate-600">
@@ -414,6 +412,7 @@ function CareerOverridePanel({ state, dispatch }: { state: AppState; dispatch: R
 }
 
 function CountrySelector({ state, dispatch }: { state: AppState; dispatch: React.Dispatch<AppAction> }) {
+  const posthog = usePostHog();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const selected = new Set(state.selectedCountries);
 
@@ -435,7 +434,7 @@ function CountrySelector({ state, dispatch }: { state: AppState; dispatch: React
               <span className="text-xs text-amber-400 font-mono">~</span>
             )}
             <button
-              onClick={() => dispatch({ type: 'REMOVE_COUNTRY', code })}
+              onClick={() => { dispatch({ type: 'REMOVE_COUNTRY', code }); posthog?.capture('country_removed', { country_code: code }); }}
               className="text-slate-400 hover:text-red-400 ml-0.5 text-xs leading-none transition-colors"
               aria-label={`Remove ${country.name}`}
             >
@@ -464,6 +463,11 @@ function CountrySelector({ state, dispatch }: { state: AppState; dispatch: React
                     disabled={isSelected}
                     onClick={() => {
                       dispatch({ type: 'ADD_COUNTRY', code: country.code });
+                      posthog?.capture('country_selected', {
+                        country_code: country.code,
+                        country_name: country.name,
+                        selected_count: state.selectedCountries.length + 1,
+                      });
                       setDropdownOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors

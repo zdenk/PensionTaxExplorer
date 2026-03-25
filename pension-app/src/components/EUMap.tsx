@@ -15,6 +15,7 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-geo-dist-min';
 import type { AppState } from '../types';
 import type { AppAction } from '../state/appReducer';
+import { usePostHog } from '@posthog/react';
 import { ALL_COUNTRIES, COUNTRY_MAP } from '../data/countryRegistry';
 import { computeScenario } from '../utils/computeScenario';
 import { totalActiveCards, MAX_CARDS } from '../state/appReducer';
@@ -70,6 +71,7 @@ interface Props {
 }
 
 export function EUMap({ state, dispatch }: Props) {
+  const posthog = usePostHog();
   const [metric,    setMetric]    = useState<MapMetric>('net_gross_ratio');
   const [collapsed, setCollapsed] = useState(false);
 
@@ -229,8 +231,14 @@ export function EUMap({ state, dispatch }: Props) {
     if (!code) return;
     if (selected.has(code)) {
       dispatch({ type: 'REMOVE_COUNTRY', code });
+      posthog?.capture('country_removed', { country_code: code });
     } else if (canAdd) {
       dispatch({ type: 'ADD_COUNTRY', code });
+      posthog?.capture('country_selected', {
+        country_code: code,
+        country_name: COUNTRY_MAP[code]?.name ?? code,
+        selected_count: state.selectedCountries.length + 1,
+      });
     }
   }
 
