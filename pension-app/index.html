@@ -3,10 +3,146 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary meta -->
     <title>EU27 Pension &amp; Tax Burden Explorer</title>
+    <meta name="description" content="Compare pension outcomes, replacement rates, and tax burdens across 22 EU OECD member states. Free, interactive, browser-only tool using EUROMOD parameters." />
+    <meta name="keywords" content="EU pension comparison, European pension systems, retirement income Europe, tax burden EU, EUROMOD, replacement rate, pension calculator" />
+    <meta name="author" content="PensionTaxExplorer" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://zdenk.github.io/PensionTaxExplorer/" />
+
+    <!-- Open Graph (LinkedIn, Facebook, Slack previews) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://zdenk.github.io/PensionTaxExplorer/" />
+    <meta property="og:title" content="EU27 Pension &amp; Tax Burden Explorer" />
+    <meta property="og:description" content="Explore and compare how much of your career earnings translate into retirement pension across 22 EU countries. Free interactive tool." />
+    <meta property="og:image" content="https://zdenk.github.io/PensionTaxExplorer/og-preview.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="EU27 Pension &amp; Tax Burden Explorer" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EU27 Pension &amp; Tax Burden Explorer" />
+    <meta name="twitter:description" content="Free interactive comparison of pension systems and tax burdens across 22 EU OECD countries." />
+    <meta name="twitter:image" content="https://zdenk.github.io/PensionTaxExplorer/og-preview.png" />
+
+    <!-- Structured data — WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "EU27 Pension & Tax Burden Explorer",
+      "description": "Interactive comparison of pension outcomes, replacement rates, and tax burdens across 22 EU OECD member states. All calculations run in-browser using EUROMOD-derived parameters.",
+      "url": "https://zdenk.github.io/PensionTaxExplorer/",
+      "applicationCategory": "FinanceApplication",
+      "isAccessibleForFree": true,
+      "operatingSystem": "Any",
+      "inLanguage": "en",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "European Pension Systems",
+        "description": "Statutory pension and tax comparison across EU member states"
+      },
+      "author": {
+        "@type": "Person",
+        "url": "https://github.com/zdenk"
+      },
+      "codeRepository": "https://github.com/zdenk/PensionTaxExplorer",
+      "license": "https://opensource.org/licenses/MIT"
+    }
+    </script>
+
+    <!-- Structured data — Dataset (Google Dataset Search) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "EU27 Statutory Pension & Tax Parameters",
+      "description": "Statutory pension formula parameters, income tax brackets, employee and employer social security contribution rates, and average wages for 22 EU OECD member states. Sourced from OECD Taxing Wages, MISSOC, Eurostat, and national authorities. Updated for 2025/2026 tax year.",
+      "url": "https://zdenk.github.io/PensionTaxExplorer/",
+      "sameAs": "https://github.com/zdenk/PensionTaxExplorer",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "inLanguage": "en",
+      "keywords": [
+        "pension", "retirement", "tax", "social security", "EU", "OECD",
+        "replacement rate", "EUROMOD", "income tax", "SSC", "Europe"
+      ],
+      "temporalCoverage": "2025/2026",
+      "spatialCoverage": {
+        "@type": "Place",
+        "name": "European Union"
+      },
+      "creator": {
+        "@type": "Person",
+        "url": "https://github.com/zdenk"
+      },
+      "includedInDataCatalog": {
+        "@type": "DataCatalog",
+        "name": "GitHub",
+        "url": "https://github.com"
+      },
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "encodingFormat": "application/typescript",
+          "contentUrl": "https://github.com/zdenk/PensionTaxExplorer/tree/main/pension-app/src/data"
+        }
+      ]
+    }
+    </script>
+    <!-- Favicon & PWA manifest -->
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <meta name="application-name" content="Pension Explorer" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Pension Explorer" />
+
+    <!-- Browser chrome colour (Android, Safari) -->
+    <meta name="theme-color" content="#0f172a" />
+
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Static summary for crawlers that cannot run JavaScript -->
+    <noscript>
+      <main style="font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;color:#1e293b">
+        <h1>EU27 Pension &amp; Tax Burden Explorer</h1>
+        <p>
+          An interactive tool for comparing statutory pension outcomes, replacement rates, and
+          income tax &amp; social security contribution burdens across 22 EU OECD member states:
+          Austria, Belgium, Czech Republic, Denmark, Estonia, Finland, France, Germany, Greece,
+          Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta, Netherlands, Poland,
+          Portugal, Slovakia, Slovenia and Spain.
+        </p>
+        <p>
+          All calculations run entirely in your browser using EUROMOD-derived parameters sourced
+          from OECD Taxing Wages, MISSOC, Eurostat, and national social insurance authorities.
+          No account or backend required. Free to use.
+        </p>
+        <p>
+          Features include: career timeline visualisation, pension accumulation chart,
+          replacement rate curves by wage level, KPI comparison across countries,
+          side-by-side country cards, and a choropleth EU map.
+        </p>
+        <p>
+          Please enable JavaScript to use the interactive application.
+          <a href="https://github.com/zdenk/PensionTaxExplorer">View source on GitHub</a>.
+        </p>
+      </main>
+    </noscript>
   </body>
 </html>

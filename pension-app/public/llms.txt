@@ -1,0 +1,44 @@
+# EU27 Pension & Tax Burden Explorer
+
+> Interactive, browser-only tool for comparing statutory pension outcomes, replacement rates, and income tax & social security contribution burdens across 22 EU OECD member states. Free. No backend. No account required.
+
+**Live URL:** https://zdenk.github.io/PensionTaxExplorer/
+**Source code:** https://github.com/zdenk/PensionTaxExplorer
+**License:** MIT
+
+## What this tool does
+
+- Compares net pension replacement rates (model-computed and OECD Pensions at a Glance tabulated) at any wage level across Austria, Belgium, Czech Republic, Denmark, Estonia, Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta, Netherlands, Poland, Portugal, Slovakia, Slovenia, and Spain.
+- Calculates income tax and employee/employer social security contributions for a standard single adult employee at any gross wage (expressed as a multiple of the country average wage, or as a fixed EUR gross or total employer cost).
+- Visualises a full career timeline (contributions, accumulation, pension phase) and a replacement rate curve across wage percentiles.
+- Allows side-by-side comparison of up to 3 country/employment-mode combinations.
+- All parameters sourced from OECD Taxing Wages 2025, MISSOC, Eurostat, ECB, and national social insurance authorities.
+
+## Data sources
+
+- **OECD Taxing Wages** — income tax brackets, SSC rates, average wages
+- **MISSOC** — social security parameters across EU member states
+- **Eurostat** — wage distribution data
+- **ECB** — PPP / EUR conversion rates
+- **EUROMOD** — microsimulation parameter cross-check
+- **National authorities** — country-specific pension formula parameters
+
+## Limitations
+
+- Statutory (Pillar 1) pension only — voluntary and occupational pensions (Pillar 2/3) not modelled.
+- Constant real wage assumed throughout career — no real wage growth modelled.
+- No post-retirement indexation modelled.
+- Basic statutory tax brackets only — no child credits, family allowances, or personal circumstances.
+- Parameters not independently audited. For illustrative and educational purposes only. Not financial advice.
+
+## Key concepts explained
+
+- **Replacement rate** — monthly pension as a fraction of pre-retirement gross monthly wage.
+- **Career SSC contributions** — cumulative employee + employer social security contributions over a 40-year career.
+- **Fair-return benchmark** — what the same contributions would yield if invested at a real net return (1–3 %), used as a counterfactual for PAYG pensions.
+- **Average wage multiplier** — wage expressed as a fraction of the country's average wage (1.0 = average, 0.67 = median-equivalent).
+
+## Optional: detailed docs
+
+- [Full technical design](https://github.com/zdenk/PensionTaxExplorer/blob/main/EU27_Pension_Tax_Explorer_Technical_Design.md)
+- [README](https://github.com/zdenk/PensionTaxExplorer/blob/main/README.md)

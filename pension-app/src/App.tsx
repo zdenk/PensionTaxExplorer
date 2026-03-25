@@ -2,7 +2,7 @@
  * App — EU27 Pension & Tax Burden Explorer
  */
 
-import { useReducer, useState } from 'react';
+import { useReducer, useState, useEffect, useRef } from 'react';
 import { appReducer, INITIAL_STATE } from './state/appReducer';
 import { COUNTRY_MAP } from './data/countryRegistry';
 import { computeScenario } from './utils/computeScenario';
@@ -11,6 +11,7 @@ import { EUMap } from './components/EUMap';
 import { CountryCard } from './components/CountryCard';
 import { ComparisonCharts } from './components/ComparisonCharts';
 import { SourcesPage } from './components/SourcesPage';
+import { decodeHashToState, buildShareUrl } from './utils/shareUrl';
 import type { ScenarioResult } from './types';
 
 /** Stable key for a (country, mode) card column. */
@@ -21,6 +22,63 @@ function cardKey(code: string, modeName: string | null) {
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
   const [showSources, setShowSources] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // Prevents the hash-write useEffect from re-triggering the hash-read on init
+  const skipHashRead = useRef(false);
+
+  // ── On mount: restore state from URL hash ──────────────────────────────────
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || hash === '#') return;
+    const decoded = decodeHashToState(hash);
+    skipHashRead.current = true;
+    if (decoded.selectedCountries) {
+      dispatch({ type: 'SET_COUNTRIES', codes: decoded.selectedCountries });
+    }
+    if (decoded.wageMode) {
+      dispatch({ type: 'SET_WAGE_MODE', mode: decoded.wageMode });
+    }
+    if (decoded.awSource) {
+      dispatch({ type: 'SET_AW_SOURCE', source: decoded.awSource });
+    }
+    if (decoded.rrSource) {
+      dispatch({ type: 'SET_RR_SOURCE', source: decoded.rrSource });
+    }
+    if (decoded.fairReturnRate != null) {
+      dispatch({ type: 'SET_FAIR_RETURN_RATE', rate: decoded.fairReturnRate });
+    }
+    if (decoded.currency) {
+      dispatch({ type: 'SET_CURRENCY', currency: decoded.currency });
+    }
+    if (decoded.careerOverrides) {
+      for (const [key, value] of Object.entries(decoded.careerOverrides) as [keyof typeof decoded.careerOverrides, number][]) {
+        if (value != null) dispatch({ type: 'SET_CAREER_OVERRIDE', key, value });
+      }
+    }
+    // selfEmploymentModes via SET_SELF_EMPLOYMENT_MODE is complex; skip for now
+    // (mode state will fall back to default employee)
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sync state → URL hash (debounced 400 ms) ──────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hash = buildShareUrl(state);
+      const newHash = '#' + new URL(hash).hash.slice(1);
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', hash);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // ── Share handler ──────────────────────────────────────────────────────────
+  function handleShare() {
+    const url = buildShareUrl(state);
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   // Build card specs: one per (country, mode) pair, in country-selection order.
   // Each spec produces a separate column.
@@ -76,6 +134,30 @@ export default function App() {
           <p className="text-xs text-slate-500">OECD EU-22 · {new Date().getFullYear()} data</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleShare}
+            title="Copy shareable link to clipboard"
+            className={`text-xs px-3 py-1 rounded border transition-colors flex items-center gap-1.5 ${
+              copied
+                ? 'bg-emerald-700 border-emerald-500 text-white'
+                : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+            }`}
+          >
+            {/* Bar-chart icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              width="12"
+              height="12"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <rect x="1" y="9" width="3" height="6" rx="0.5" />
+              <rect x="6" y="5" width="3" height="10" rx="0.5" />
+              <rect x="11" y="1" width="3" height="14" rx="0.5" />
+            </svg>
+            {copied ? 'Copied!' : 'Share'}
+          </button>
           <button
             onClick={() => setShowSources(s => !s)}
             className={`text-xs px-3 py-1 rounded border transition-colors ${

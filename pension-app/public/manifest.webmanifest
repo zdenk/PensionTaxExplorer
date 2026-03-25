@@ -1,0 +1,30 @@
+{
+  "name": "EU27 Pension & Tax Burden Explorer",
+  "short_name": "Pension Explorer",
+  "description": "Compare statutory pension outcomes, replacement rates, and tax burdens across 22 EU OECD member states. Free, interactive, browser-only tool.",
+  "start_url": "/PensionTaxExplorer/",
+  "scope": "/PensionTaxExplorer/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "en",
+  "categories": ["finance", "education", "utilities"],
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "og-preview.png",
+      "sizes": "1199x629",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "EU map view comparing pension replacement rates across member states"
+    }
+  ]
+}
