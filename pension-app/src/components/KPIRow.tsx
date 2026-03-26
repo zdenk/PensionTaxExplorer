@@ -163,7 +163,7 @@ interface PensionRowProps {
  * When oecdRR is provided, the replacement rate KPI switches to the OECD PaG value.
  */
 export function PensionRow({ result, currency, countryCurrency, eurExchangeRate, oecdRR }: PensionRowProps) {
-  const { pensionResult } = result;
+  const { pensionResult, taxResult, sscResult } = result;
   const { monthlyPension, pillar1Monthly, pillar2Monthly, replacementRate } = pensionResult;
   const hasP2 = pillar2Monthly != null && pillar2Monthly > 0;
 
@@ -179,10 +179,16 @@ export function PensionRow({ result, currency, countryCurrency, eurExchangeRate,
     ? `OECD PaG — pension age ${oecdRR.pensionAge}${oecdRR.isInterpolated ? ' (interp.)' : ''}${oecdRR.isP1Only ? ' · P1 only' : ''}`
     : 'of gross wage';
 
+  // Net replacement rate: net pension / net wage
+  const gross = result.resolvedWage.grossLocal;
+  const netTakeHome = gross - taxResult.incomeTaxMonthly - sscResult.employeeTotal;
+  const netPension = pensionResult.netMonthlyPension ?? monthlyPension;
+  const netRR = netTakeHome > 0 ? (netPension / netTakeHome) * 100 : 0;
+
   return (
     <div className="mt-3">
       <h3 className="text-xs text-slate-500 uppercase tracking-wide mb-1.5">Pension Estimate</h3>
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <KPICard
           label={hasP2 ? 'Pillar 1 — State' : 'Monthly Pension'}
           value={da(pillar1Monthly)}
@@ -211,6 +217,12 @@ export function PensionRow({ result, currency, countryCurrency, eurExchangeRate,
             valueColor={useOecd ? 'text-violet-400' : 'text-teal-400'}
           />
         )}
+        <KPICard
+          label="Net Replacement Rate"
+          value={`${netRR.toFixed(1)}%`}
+          sub="net pension / net wage"
+          valueColor="text-emerald-400"
+        />
       </div>
       {useOecd && (
         <p className="text-xs text-violet-500 mt-1">

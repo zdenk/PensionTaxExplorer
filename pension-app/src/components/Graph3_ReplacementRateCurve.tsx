@@ -25,38 +25,53 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from 'recharts';
-import type { CountryConfig, CareerDefaults, ScenarioResult, WageMode } from '../types';
+import type { CountryConfig, CareerDefaults, ScenarioResult, WageMode, ReductionThreshold, DBConfig } from '../types';
 import { PensionEngine } from '../engines/PensionEngine';
 import { computePensionTax } from '../utils/computeScenario';
+
+/** Extract DB-style reduction thresholds from any pension system config. */
+export function getReductionThresholds(country: CountryConfig): ReductionThreshold[] {
+  const ps = country.pensionSystem;
+  if (ps.type === 'DB') return ps.reductionThresholds;
+  if (ps.type === 'MIXED' && ps.pillar1.type === 'DB')
+    return (ps.pillar1 as DBConfig).reductionThresholds;
+  return [];
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const BASE_LOW  = 0.5;
 const BASE_HIGH = 4.0;
-const STEP      = 0.25;
+const STEP      = 0.01;
 
 /**
  * Build a sorted de-duped list of AW multipliers for the curve.
- * Extends uppward to include `extraPoint` when it falls outside the base range.
+ * Extends upward/downward to include `extraPoint` when it falls outside the base range.
+ * `baseLow` overrides BASE_LOW (used to start from minimum wage).
  */
-function buildMultipliers(extraPoint?: number): number[] {
+function buildMultipliers(extraPoint?: number, baseLow: number = BASE_LOW): number[] {
   const high =
     extraPoint !== undefined && extraPoint > BASE_HIGH
       ? Math.ceil(extraPoint / STEP) * STEP
       : BASE_HIGH;
-  const low =
-    extraPoint !== undefined && extraPoint < BASE_LOW
+
+  // Snap low to the STEP grid so generated points always land on standard AW
+  // multiples and the last point reliably hits `high` (e.g. 4.0×).
+  const snappedLow =
+    extraPoint !== undefined && extraPoint < baseLow
       ? Math.floor(extraPoint / STEP) * STEP
-      : BASE_LOW;
+      : Math.ceil(baseLow / STEP) * STEP;
 
-  const steps = Math.round((high - low) / STEP);
-  const pts = Array.from({ length: steps + 1 }, (_, i) => +(low + i * STEP).toFixed(2));
+  const steps = Math.max(0, Math.round((high - snappedLow) / STEP));
+  const pts = Array.from({ length: steps + 1 }, (_, i) => +(snappedLow + i * STEP).toFixed(2));
 
-  // Insert the exact extra point so ReferenceLine snaps perfectly
-  if (
-    extraPoint !== undefined &&
-    !pts.some((p) => Math.abs(p - extraPoint) < 0.001)
-  ) {
+  // Prepend the exact minimum-wage point when it falls below the first step tick
+  if (baseLow < snappedLow - 0.001 && !pts.some((p) => Math.abs(p - baseLow) < 0.001)) {
+    pts.unshift(+baseLow.toFixed(4));
+  }
+
+  // Insert the exact extra point so the scenario ReferenceLine snaps perfectly
+  if (extraPoint !== undefined && !pts.some((p) => Math.abs(p - extraPoint) < 0.001)) {
     pts.push(extraPoint);
     pts.sort((a, b) => a - b);
   }
@@ -158,9 +173,30 @@ export function Graph3_ReplacementRateCurve({ country, result, careerOverrides, 
       : 1)
   ).toFixed(4);
 
+  // Minimum wage as AW multiplier — start the curve here instead of BASE_LOW
+  const minWageMultiplier =
+    country.minimumWage && country.averageWage > 0
+      ? +(country.minimumWage / country.averageWage).toFixed(4)
+      : BASE_LOW;
+
+  // Reduction thresholds — DB systems only (e.g. CZ)
+  const reductionThresholds = getReductionThresholds(country);
+  const thresholdMultipliers = reductionThresholds.map(
+    t => +(t.upTo / country.averageWage).toFixed(4)
+  );
+
   // In fixed-wage modes we always show the marker; extend the curve range to include it
   const isFixed = wageMode.type !== 'multiplier';
-  const multipliers = buildMultipliers(isFixed ? currentMultiplier : undefined);
+  const multipliers = buildMultipliers(isFixed ? currentMultiplier : undefined, minWageMultiplier);
+
+  // Insert exact threshold multipliers so the curve passes through each breakpoint
+  for (const tm of thresholdMultipliers) {
+    if (Number.isFinite(tm) && !multipliers.some(p => Math.abs(p - tm) < 0.001)) {
+      multipliers.push(tm);
+    }
+  }
+  multipliers.sort((a, b) => a - b);
+
   const data: CurvePoint[] = buildCurve(country, careerYears, retirementAge, hasPensionTax, multipliers);
 
   // Y-axis domain — add a bit of headroom
@@ -172,15 +208,17 @@ export function Graph3_ReplacementRateCurve({ country, result, careerOverrides, 
   const xLow  = multipliers[0];
   const xHigh = multipliers[multipliers.length - 1];
   const xFmt  = (v: number) => `${v}×`;
-  // Base ticks every 0.5x up to 4×, then add a tick at xHigh if range was extended
-  const baseTicks = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4].filter((t) => t <= xHigh);
-  const xTicks = xHigh > 4 && !baseTicks.includes(xHigh) ? [...baseTicks, +xHigh.toFixed(2)] : baseTicks;
+  // Base ticks every 0.5x, filtered to visible range; prepend xLow tick if it's not close to a base tick
+  const baseTicks = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4].filter((t) => t >= xLow && t <= xHigh);
+  const hasMinWageTick = baseTicks.some((t) => Math.abs(t - xLow) < 0.05);
+  const withMinWage = hasMinWageTick ? baseTicks : [+xLow.toFixed(2), ...baseTicks];
+  const xTicks = xHigh > 4 && !withMinWage.includes(xHigh) ? [...withMinWage, +xHigh.toFixed(2)] : withMinWage;
 
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-[11px] text-slate-500 uppercase tracking-wide">
-          Replacement Rate by Wage Level ({xLow}× – {xHigh.toFixed(xHigh % 1 === 0 ? 0 : 2)}× AW)
+          Replacement Rate by Wage Level ({country.minimumWage ? 'min wage' : `${xLow}×`} – {xHigh.toFixed(xHigh % 1 === 0 ? 0 : 2)}× AW)
         </h4>
         <div className="flex items-center gap-3 text-[10px] text-slate-500">
           <span className="flex items-center gap-1">
@@ -282,6 +320,32 @@ export function Graph3_ReplacementRateCurve({ country, result, careerOverrides, 
               fontWeight: isFixed ? 600 : 400,
             }}
           />
+
+          {/* Pension formula reduction thresholds (DB systems) */}
+          {reductionThresholds.map((t, i) => {
+            const xVal = thresholdMultipliers[i];
+            if (xVal > xHigh + 0.001) return null;
+            // RR at this exact threshold point (already in `data` since we inserted it)
+            const pt = data.find(d => Math.abs(d.multiplier - xVal) < 0.001);
+            const rrLabel = pt ? `${pt.grossRR.toFixed(1)}%` : '';
+            const isRight = xVal > (xLow + xHigh) / 2;
+            return (
+              <ReferenceLine
+                key={`rt${i}`}
+                x={xVal}
+                stroke="#f59e0b"
+                strokeDasharray="3 2"
+                strokeWidth={1}
+                label={{
+                  value: rrLabel,
+                  position: isRight ? 'insideTopLeft' : 'insideTopRight',
+                  fontSize: 8,
+                  fill: '#f59e0b',
+                  dy: 2,
+                }}
+              />
+            );
+          })}
 
           {/* Gross replacement rate */}
           <Line

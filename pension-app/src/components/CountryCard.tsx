@@ -58,7 +58,7 @@ function getModeShortLabel(mode: SelfEmploymentMode): string {
   return 'OSVČ';
 }
 
-function CountryHeader({
+export function CountryHeader({
   country,
   dispatch,
   activeModes,
@@ -194,7 +194,7 @@ function CountryHeader({
   );
 }
 
-function IncompleteBanner({ country }: { country: CountryConfig }) {
+export function IncompleteBanner({ country }: { country: CountryConfig }) {
   if (!country.incomplete) return null;
   return (
     <div className="mb-3 text-xs text-amber-400 bg-amber-900/20 border border-amber-800/40 rounded px-3 py-2">
@@ -204,7 +204,7 @@ function IncompleteBanner({ country }: { country: CountryConfig }) {
   );
 }
 
-function OSVCBanner({
+export function OSVCBanner({
   country,
   modeName,
   grossMonthly,
@@ -376,7 +376,7 @@ function BenefitRow({
   );
 }
 
-function CZBenefitsPanel({
+export function CZBenefitsPanel({
   country,
   result,
   appState,
@@ -601,6 +601,7 @@ export function CountryCard({ country, result, selfEmploymentModeName, appState,
         countryCurrency={country.currency}
         eurExchangeRate={country.eurExchangeRate}
         retirementAge={retirementAge}
+        country={country}
       />
 
       <Graph2_Accumulation
