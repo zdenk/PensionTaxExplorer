@@ -276,6 +276,7 @@ export default function App() {
                 entries={comparisonEntries}
                 wageMode={state.wageMode}
                 careerOverrides={state.careerOverrides}
+                appState={state}
               />
             )}
           </>

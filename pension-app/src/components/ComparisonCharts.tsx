@@ -9,7 +9,7 @@
  *  D. Replacement Rate Curve  — all-country RR curves overlaid on one chart
  */
 
-import { useState } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -23,9 +23,10 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import type { CountryConfig, ScenarioResult, WageMode, CareerDefaults } from '../types';
-import { FLAG } from '../data/countryRegistry';
+import type { CountryConfig, ScenarioResult, WageMode, CareerDefaults, AppState } from '../types';
+import { FLAG, ALL_COUNTRIES, COUNTRY_MAP } from '../data/countryRegistry';
 import { PensionEngine } from '../engines/PensionEngine';
+import { computeScenario, computePensionTax } from '../utils/computeScenario';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ interface Props {
   entries: CountryScenario[];
   wageMode: WageMode;
   careerOverrides: Partial<CareerDefaults>;
+  appState: AppState;
 }
 
 // ─── Country colour palette ───────────────────────────────────────────────────
@@ -106,6 +108,9 @@ const fmtEur = (n: number) =>
   : n >= 1_000   ? `€${Math.round(n / 1_000)}k`
   : `€${Math.round(n)}`;
 
+const fmtEurFull = (n: number) =>
+  `€${Math.round(n).toLocaleString('en-GB')}`;
+
 const fmtAxisK = (v: number) =>
   v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M`
   : v >= 1_000   ? `${Math.round(v / 1_000)}k`
@@ -114,13 +119,14 @@ const fmtAxisK = (v: number) =>
 // ─── Shared tooltip ───────────────────────────────────────────────────────────
 
 function EurTooltip({
-  active, payload, label, labelPrefix = '',
+  active, payload, label, labelPrefix = '', fmt = fmtEur,
 }: {
   active?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload?: any[];
   label?: string | number;
   labelPrefix?: string;
+  fmt?: (n: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const visible = payload.filter(
@@ -137,7 +143,7 @@ function EurTooltip({
       {visible.map((e, i) => (
         <div key={i} className="flex justify-between gap-4 mb-0.5">
           <span style={{ color: e.fill ?? e.color ?? '#94a3b8' }}>{e.name}</span>
-          <span className="text-slate-100 font-mono">{fmtEur(e.value)}</span>
+          <span className="text-slate-100 font-mono">{fmt(e.value)}</span>
         </div>
       ))}
     </div>
@@ -197,7 +203,7 @@ function CostBreakdownChart({ entries }: { entries: CountryScenario[] }) {
           />
           <Tooltip
             content={(p) => (
-              <EurTooltip active={p.active} payload={p.payload as never[]} />
+              <EurTooltip active={p.active} payload={p.payload as never[]} fmt={fmtEurFull} />
             )}
             cursor={{ fill: '#1e293b' }}
           />
@@ -216,7 +222,7 @@ function CostBreakdownChart({ entries }: { entries: CountryScenario[] }) {
         {data.map((d) => (
           <div key={d.name} className="flex justify-between text-xs px-1">
             <span className="text-slate-500">{d.name}</span>
-            <span className="text-slate-400 font-mono">Total cost {fmtEur(d.totalCost)}</span>
+            <span className="text-slate-400 font-mono">Total cost {fmtEurFull(d.totalCost)}</span>
           </div>
         ))}
       </div>
@@ -281,7 +287,7 @@ function PensionOutputChart({ entries }: { entries: CountryScenario[] }) {
           />
           <Tooltip
             content={(p) => (
-              <EurTooltip active={p.active} payload={p.payload as never[]} />
+              <EurTooltip active={p.active} payload={p.payload as never[]} fmt={fmtEurFull} />
             )}
             cursor={{ fill: '#1e293b' }}
           />
@@ -556,6 +562,8 @@ function ComparisonRRCurveChart({
   entries: CountryScenario[];
   careerOverrides: Partial<CareerDefaults>;
 }) {
+  const [rrMode, setRrMode] = useState<'gross' | 'net' | 'both'>('both');
+
   const LOW  = 0.5;
   const HIGH = 4.0;
   const STEP = 0.05;
@@ -564,9 +572,16 @@ function ComparisonRRCurveChart({
     (_, i) => +(LOW + i * STEP).toFixed(2),
   );
 
-  // Build data: one row per multiplier, one gross-RR field per country
+  // Which countries tax pension income?
+  const taxedCountryCodes = new Set(
+    entries
+      .filter(({ country }) => !!country.pensionTax && country.pensionTax.method !== 'none')
+      .map(({ code }) => code),
+  );
+
+  // Build data: one row per multiplier, gross + (optional) net RR per country
   const data = multipliers.map((m) => {
-    const row: Record<string, number> = { multiplier: m };
+    const row: Record<string, number | null> = { multiplier: m };
     entries.forEach(({ code, country }) => {
       const retirementAge  = careerOverrides.retirementAge  ?? country.defaults.retirementAge;
       const careerStartAge = careerOverrides.careerStartAge ?? country.defaults.careerStartAge;
@@ -574,11 +589,23 @@ function ComparisonRRCurveChart({
       const grossMonthly   = country.averageWage * m;
       const pr = PensionEngine.calculate(country, grossMonthly, careerYears, retirementAge);
       row[code] = grossMonthly > 0 ? +((pr.monthlyPension / grossMonthly) * 100).toFixed(1) : 0;
+      if (taxedCountryCodes.has(code)) {
+        const tax = computePensionTax(country, pr.monthlyPension);
+        row[`${code}_net`] = grossMonthly > 0
+          ? +(((pr.monthlyPension - tax) / grossMonthly) * 100).toFixed(1)
+          : 0;
+      }
     });
     return row;
   });
 
-  const allRR = data.flatMap((row) => entries.map(({ code }) => row[code] ?? 0));
+  const allRR = data.flatMap((row) =>
+    entries.flatMap(({ code }) => {
+      const vals: number[] = [(row[code] as number) ?? 0];
+      if (taxedCountryCodes.has(code)) vals.push((row[`${code}_net`] as number) ?? 0);
+      return vals;
+    }),
+  );
   const yMax  = Math.ceil(Math.max(...allRR) / 10) * 10 + 10;
 
   // Current wage multiplier per country (for reference lines)
@@ -593,6 +620,25 @@ function ComparisonRRCurveChart({
 
   return (
     <Panel title="Replacement Rate Curve">
+      {/* Gross / Net toggle — only shown when at least one country taxes pension income */}
+      {taxedCountryCodes.size > 0 && (
+        <div className="flex items-center gap-1 mb-3">
+          {(['gross', 'both', 'net'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setRrMode(mode)}
+              className={[
+                'px-2.5 py-0.5 rounded text-[11px] font-medium transition-colors',
+                rrMode === mode
+                  ? 'bg-sky-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
+              ].join(' ')}
+            >
+              {mode === 'gross' ? 'Gross' : mode === 'net' ? 'Net' : 'Both'}
+            </button>
+          ))}
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={data} margin={{ top: 14, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -616,18 +662,30 @@ function ComparisonRRCurveChart({
           <Tooltip
             content={(p) => {
               if (!p.active || !p.payload?.length) return null;
-              const visible = (p.payload as { name: string; value: number; color: string }[])
-                .filter((e) => e.value !== undefined && e.value !== null);
+              const visible = (p.payload as { name: string; value: number; color: string; dataKey?: string }[])
+                .filter((e) => {
+                  if (e.value === undefined || e.value === null) return false;
+                  const isNet = (e.dataKey as string)?.endsWith('_net');
+                  if (rrMode === 'gross' && isNet) return false;
+                  if (rrMode === 'net' && !isNet && taxedCountryCodes.has(e.dataKey as string)) return false;
+                  return true;
+                });
               if (!visible.length) return null;
               return (
                 <div className="bg-slate-900/95 border border-slate-700 rounded-lg px-3 py-2 text-xs shadow-xl">
                   <p className="font-semibold text-slate-300 mb-1.5">{p.label}× AW</p>
-                  {visible.map((e, i) => (
-                    <div key={i} className="flex justify-between gap-4 mb-0.5">
-                      <span style={{ color: e.color }}>{e.name}</span>
-                      <span className="text-slate-100 font-mono">{e.value.toFixed(1)} %</span>
-                    </div>
-                  ))}
+                  {visible.map((e, i) => {
+                    const isNet = (e.dataKey as string)?.endsWith('_net');
+                    const label = isNet
+                      ? e.name.replace(' Net', '') + ' Net RR'
+                      : e.name.replace(' Gross', '') + ' Gross RR';
+                    return (
+                      <div key={i} className="flex justify-between gap-4 mb-0.5">
+                        <span style={{ color: e.color }}>{label}</span>
+                        <span className="text-slate-100 font-mono">{(e.value as number).toFixed(1)} %</span>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             }}
@@ -650,12 +708,12 @@ function ComparisonRRCurveChart({
             />
           ))}
 
-          {/* One line per country */}
-          {entries.map(({ code, country }, idx) => (
+          {/* One solid line per country (gross RR) */}
+          {rrMode !== 'net' && entries.map(({ code, country }, idx) => (
             <Line
               key={code}
               dataKey={code}
-              name={`${FLAG[code] ?? ''} ${country.name}`}
+              name={`${FLAG[code] ?? ''} ${country.name} Gross`}
               stroke={countryColor(code, idx)}
               strokeWidth={1.5}
               dot={false}
@@ -663,26 +721,89 @@ function ComparisonRRCurveChart({
               connectNulls
             />
           ))}
+
+          {/* Dashed line per taxed country (net RR) */}
+          {rrMode !== 'gross' && entries
+            .filter(({ code }) => taxedCountryCodes.has(code))
+            .map(({ code, country }) => {
+              const idx = entries.findIndex((e) => e.code === code);
+              return (
+                <Line
+                  key={`${code}_net`}
+                  dataKey={`${code}_net`}
+                  name={`${FLAG[code] ?? ''} ${country.name} Net`}
+                  stroke={countryColor(code, idx)}
+                  strokeWidth={1.5}
+                  strokeDasharray="5 3"
+                  dot={false}
+                  isAnimationActive={false}
+                  connectNulls
+                />
+              );
+            })}
+
+          {/* For 'net' mode: still show gross line for countries without pension tax */}
+          {rrMode === 'net' && entries
+            .filter(({ code }) => !taxedCountryCodes.has(code))
+            .map(({ code, country }) => {
+              const idx = entries.findIndex((e) => e.code === code);
+              return (
+                <Line
+                  key={`${code}_gross_fallback`}
+                  dataKey={code}
+                  name={`${FLAG[code] ?? ''} ${country.name} Gross`}
+                  stroke={countryColor(code, idx)}
+                  strokeWidth={1.5}
+                  dot={false}
+                  isAnimationActive={false}
+                  connectNulls
+                />
+              );
+            })}
         </LineChart>
       </ResponsiveContainer>
 
       {/* Legend */}
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-        {entries.map(({ code, country }, idx) => (
-          <span key={code} className="flex items-center gap-1.5 text-xs">
-            <span
-              style={{
-                display: 'inline-block',
-                width: 20,
-                height: 3,
-                background: countryColor(code, idx),
-                borderRadius: 2,
-              }}
-            />
-            <span className="text-slate-300">{FLAG[code] ?? ''} {country.name}</span>
-          </span>
-        ))}
-        <span className="text-slate-600 text-xs self-center ml-2">· Gross RR · Career length per country defaults</span>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+        {entries.map(({ code, country }, idx) => {
+          const isTaxed = taxedCountryCodes.has(code);
+          const showGross = rrMode === 'gross' || rrMode === 'both' || !isTaxed;
+          const showNet   = isTaxed && (rrMode === 'net' || rrMode === 'both');
+          return (
+            <span key={code} className="flex items-center gap-3 text-xs">
+              {showGross && (
+                <span className="flex items-center gap-1">
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 20,
+                      height: 3,
+                      background: countryColor(code, idx),
+                      borderRadius: 2,
+                    }}
+                  />
+                  <span className="text-slate-300">{FLAG[code] ?? ''} {country.name}</span>
+                  {rrMode === 'both' && isTaxed && <span className="text-slate-500">Gross</span>}
+                </span>
+              )}
+              {showNet && (
+                <span className="flex items-center gap-1">
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 20,
+                      height: 2,
+                      backgroundImage: `repeating-linear-gradient(90deg, ${countryColor(code, idx)} 0, ${countryColor(code, idx)} 5px, transparent 5px, transparent 8px)`,
+                    }}
+                  />
+                  {rrMode === 'net' && <span className="text-slate-300">{FLAG[code] ?? ''} {country.name}</span>}
+                  {rrMode === 'both' && isTaxed && <span className="text-slate-500">Net</span>}
+                </span>
+              )}
+            </span>
+          );
+        })}
+        <span className="text-slate-600 text-xs self-center ml-2">· Career length per country defaults</span>
       </div>
     </Panel>
   );
@@ -700,19 +821,46 @@ const NAV_WIDTH = '11rem'; // enough for the longest label
 function ComparisonNav({
   visible,
   onToggle,
+  effectiveCodes,
+  allScenarios,
+  isOverride,
+  onRemove,
+  onAdd,
+  onReset,
 }: {
   visible: Set<ComparisonViewId>;
   onToggle: (id: ComparisonViewId) => void;
+  effectiveCodes: string[];
+  allScenarios: Record<string, CountryScenario>;
+  isOverride: boolean;
+  onRemove: (code: string) => void;
+  onAdd: (code: string) => void;
+  onReset: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [menuOpen]);
+
+  const addable = Object.values(allScenarios)
+    .filter(s => !effectiveCodes.includes(s.code))
+    .sort((a, b) => a.country.name.localeCompare(b.country.name));
+
   return (
     <div className="flex flex-col gap-0.5 bg-slate-900/95 backdrop-blur-sm border border-slate-700/70 rounded-lg p-1.5 shadow-2xl">
 
-      {/* Header */}
+      {/* ── Views section ────────────────────────────────── */}
       <p className="text-[9px] text-slate-500 uppercase tracking-widest px-1 pb-1 mb-0.5 border-b border-slate-800">
         Views
       </p>
 
-      {/* View toggles */}
       {COMPARISON_VIEWS.map(({ id, label }) => {
         const on = visible.has(id);
         return (
@@ -740,19 +888,106 @@ function ComparisonNav({
           </div>
         );
       })}
+
+      {/* ── Countries section ────────────────────────────── */}
+      <div className="h-px bg-slate-800 my-1" />
+      <div className="flex items-center justify-between px-1 pb-0.5 mb-0.5">
+        <p className="text-[9px] text-slate-500 uppercase tracking-widest">
+          Countries
+        </p>
+        {isOverride && (
+          <button
+            onClick={onReset}
+            title="Reset to global country selection"
+            className="text-[9px] text-amber-500/70 hover:text-amber-400 transition-colors"
+          >
+            ↺ reset
+          </button>
+        )}
+      </div>
+
+      {/* Active country pills */}
+      {effectiveCodes.map(code => (
+        <button
+          key={code}
+          onClick={() => onRemove(code)}
+          title={`Remove ${COUNTRY_MAP[code]?.name ?? code}`}
+          className="flex items-center gap-1 px-2 py-1 text-[11px] rounded text-left leading-tight transition-all border bg-slate-800/60 border-slate-600/50 text-slate-300 hover:border-red-400/50 hover:text-red-400 group"
+        >
+          <span>{FLAG[code] ?? ''}</span>
+          <span className="flex-1 truncate">{COUNTRY_MAP[code]?.name ?? code}</span>
+          <span className="text-slate-500 group-hover:text-red-400 text-[10px] shrink-0">×</span>
+        </button>
+      ))}
+
+      {/* Add country dropdown — opens to the right of the panel */}
+      <div ref={menuRef} className="relative">
+        <button
+          onClick={() => setMenuOpen(o => !o)}
+          className="w-full flex items-center justify-between px-2 py-1 text-[11px] rounded border border-dashed border-slate-700 text-slate-600 hover:text-sky-400 hover:border-sky-700/60 transition-all"
+        >
+          <span>+ Add</span>
+          <span className="text-[9px]">{menuOpen ? '▲' : '▼'}</span>
+        </button>
+        {menuOpen && (
+          <div className="absolute top-0 left-full ml-1.5 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl py-1 w-40 max-h-64 overflow-y-auto">
+            {addable.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-slate-500">All countries shown</p>
+            ) : addable.map(({ code, country }) => (
+              <button
+                key={code}
+                onClick={() => { onAdd(code); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
+              >
+                <span>{FLAG[code] ?? ''}</span>
+                <span>{country.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function ComparisonCharts({ entries, wageMode, careerOverrides }: Props) {
+export function ComparisonCharts({ entries, wageMode, careerOverrides, appState }: Props) {
   const [visible, setVisible] = useState<Set<ComparisonViewId>>(
     () => new Set<ComparisonViewId>(['cost', 'pension', 'accumulation', 'rr-curve']),
   );
+  const [localCodes, setLocalCodes] = useState<string[] | null>(null);
 
-  // ── Early exit guards ──────────────────────────────────────────────
-  if (entries.length < 2) return null;
+  // Compute scenarios for all OECD EU countries (powers the override country picker)
+  const allScenarios = useMemo(() => {
+    const out: Record<string, CountryScenario> = {};
+    for (const c of ALL_COUNTRIES) {
+      try {
+        out[c.code] = {
+          code: c.code,
+          country: c,
+          result: computeScenario(
+            c,
+            appState.wageMode,
+            appState.careerOverrides,
+            appState.awSource,
+            null,
+            undefined,
+            appState.fairReturnRate,
+          ),
+        };
+      } catch { /* skip */ }
+    }
+    return out;
+  }, [appState.wageMode, appState.careerOverrides, appState.awSource, appState.fairReturnRate]);
+
+  // Effective entries: local override takes precedence over the prop
+  const effectiveCodes   = localCodes ?? entries.map(e => e.code);
+  const effectiveEntries = effectiveCodes
+    .map(code => allScenarios[code])
+    .filter((e): e is CountryScenario => !!e);
+
+  // ── Early exit guard ───────────────────────────────────────────────
   if (wageMode.type === 'multiplier') return null;
 
   const wageModeLabel =
@@ -770,20 +1005,31 @@ export function ComparisonCharts({ entries, wageMode, careerOverrides }: Props) 
 
   const show = (id: ComparisonViewId) => visible.has(id);
 
+  const handleRemove = (code: string) =>
+    setLocalCodes(prev => {
+      const base = prev ?? entries.map(e => e.code);
+      return base.filter(c => c !== code);
+    });
+
+  const handleAdd = (code: string) =>
+    setLocalCodes(prev => {
+      const base = prev ?? entries.map(e => e.code);
+      return base.includes(code) ? base : [...base, code];
+    });
+
+  const handleReset = () => setLocalCodes(null);
+
   return (
     <div id="section-comparison" className="mt-8">
 
       {/* ─ Top divider row — mirrors SectionRow header ────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap shrink-0">
           Cross-country Comparison
         </span>
         <div className="flex-1 h-px bg-slate-700/50" />
         <span className="text-xs text-slate-500 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 font-mono shrink-0">
           {wageModeLabel}
-        </span>
-        <span className="text-xs text-slate-600 shrink-0">
-          {entries.length} countries
         </span>
       </div>
 
@@ -797,21 +1043,38 @@ export function ComparisonCharts({ entries, wageMode, careerOverrides }: Props) 
           style={{ width: NAV_WIDTH }}
         >
           <div style={{ position: 'sticky', top: '1rem' }}>
-            <ComparisonNav visible={visible} onToggle={toggle} />
+            <ComparisonNav
+              visible={visible}
+              onToggle={toggle}
+              effectiveCodes={effectiveCodes}
+              allScenarios={allScenarios}
+              isOverride={localCodes !== null}
+              onRemove={handleRemove}
+              onAdd={handleAdd}
+              onReset={handleReset}
+            />
           </div>
         </div>
 
         {/* Chart stack */}
         <div className="flex-1 min-w-0 flex flex-col gap-4">
-          {show('cost') && <CostBreakdownChart entries={entries} />}
-          {show('pension') && <PensionOutputChart entries={entries} />}
-          {show('accumulation') && <AccumulationChart entries={entries} />}
-          {show('rr-curve') && (
-            <ComparisonRRCurveChart entries={entries} careerOverrides={careerOverrides} />
-          )}
-          {visible.size === 0 && (
-            <div className="text-sm text-slate-500 italic py-6 text-center">
-              Select a view from the sidebar to display charts.
+          {effectiveEntries.length >= 2 ? (
+            <>
+              {show('cost') && <CostBreakdownChart entries={effectiveEntries} />}
+              {show('pension') && <PensionOutputChart entries={effectiveEntries} />}
+              {show('accumulation') && <AccumulationChart entries={effectiveEntries} />}
+              {show('rr-curve') && (
+                <ComparisonRRCurveChart entries={effectiveEntries} careerOverrides={careerOverrides} />
+              )}
+              {visible.size === 0 && (
+                <div className="text-sm text-slate-500 italic py-6 text-center">
+                  Select a view from the sidebar to display charts.
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-sm text-slate-500 italic py-8">
+              Add at least 2 countries in the sidebar to compare.
             </div>
           )}
         </div>
