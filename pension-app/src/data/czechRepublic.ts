@@ -117,7 +117,7 @@ export const czechRepublic: CountryConfig = {
   wagePercentiles: {          // CZK/month — ISPV / Eurostat SES 2022 adj. to 2026
     p10: 19_000, p25: 27_000, p75: 57_000, p90: 82_000,
   },
-  minimumWage: 20_800,        // CZK/month — NV č. 283/2025 Sb. (2026 decree)
+  minimumWage: 22_400,        // CZK/month — NV č. 365/2025 Sb. (2026 decree)
   oecdAverageWage: 41_420,  // CZK/month — OECD Taxing Wages 2025, Table I.1 (2024): CZK 497,040/year
   wageMultipliers: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0],
 
@@ -393,6 +393,18 @@ export const czechRepublic: CountryConfig = {
       dataYear: 2026,
     },
     {
+      // NV č. 365/2025 Sb. — sets 2026 pension parameters:
+      //   basic pension (základní výměra): 4,900 CZK
+      //   1st reduction threshold: 21,546 CZK (44% of AW) - lower than minimum wage
+      //   2nd reduction threshold: 195,868 CZK (4× AW)
+      //   recalculation coefficient for 2024 earnings: 1.0581
+      parameter: 'pensionSystem.basePension + pensionSystem.reductionThresholds',
+      source: 'Nařízení vlády č. 365/2025 Sb. (effective 1.1.2026)',
+      url: 'https://www.zakonyprolidi.cz/cs/2025-365',
+      retrievedDate: '2026-03',
+      dataYear: 2026,
+    },
+    {
       parameter: 'pensionSystem.accrualRatePerYear',
       source: 'Zákon č. 155/1995 Sb. (as amended by důchodová reforma)',
       url: 'https://mpsv.gov.cz/dulezite-parametry',
@@ -444,7 +456,14 @@ export const czechRepublic: CountryConfig = {
     },
     {
       parameter: 'minimumWage',
-      source: 'Eurostat minimum wage statistics (earn_mw_cur) + national decree 2026',
+      source: 'MPSV — Minimální mzda (official portal)',
+      url: 'https://mpsv.gov.cz/minimalni-mzda',
+      retrievedDate: '2026-03',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'minimumWage',
+      source: 'Eurostat minimum wage statistics (earn_mw_cur)',
       url: 'https://ec.europa.eu/eurostat/statistics-explained/index.php/Minimum_wage_statistics',
       retrievedDate: '2026-01',
       dataYear: 2026,
@@ -469,6 +488,25 @@ export const czechRepublic: CountryConfig = {
       source: 'Zákon č. 586/1992 Sb. §6(9)(b); Vyhláška č. 392/2024 Sb. (MPSV stravné 2025)',
       url: 'https://www.zakonyprolidi.cz/cs/1992-586#p6-9-b',
       retrievedDate: '2026-01',
+      dataYear: 2026,
+    },
+    // ── Paušální daň (flat-tax scheme for OSVČ) ───────────────────────────
+    {
+      // Confirms 2026 monthly amounts: Band 1 = 9,984 CZK (100+6,578+3,306);
+      // Band 2 = 16,745 CZK (4,963+8,191+3,591).
+      // Also confirms assessment bases: Band 1 social = 22,526 CZK; Band 2 social = 28,050 CZK;
+      // Band 2 health = 26,600 CZK.
+      parameter: 'paušální daň (PD_BAND1_*, PD_BAND2_*)',
+      source: 'ČSSZ — OSVČ v paušálním režimu',
+      url: 'https://www.cssz.cz/osvc-v-pausalnim-rezimu',
+      retrievedDate: '2026-03',
+      dataYear: 2026,
+    },
+    {
+      parameter: 'paušální daň (PD_BAND1_*, PD_BAND2_*)',
+      source: 'Finanční správa ČR — Paušální daň 2026: novinky, termíny',
+      url: 'https://financnisprava.gov.cz/cs/financni-sprava/media-a-verejnost/tiskove-zpravy-gfr/tiskove-zpravy-2025/pausalni-dan-2026-novinky-terminy',
+      retrievedDate: '2026-03',
       dataYear: 2026,
     },
     {

@@ -244,8 +244,8 @@ export function EUMap({ state, dispatch }: Props) {
 
   return (
     <div className="bg-slate-900 border-b border-slate-700">
-      {/* Header */}
-      <div className="px-4 py-2 flex items-center gap-3 flex-wrap">
+      {/* Header row — always visible */}
+      <div className="px-4 py-2 flex items-center gap-3">
         <button
           onClick={() => setCollapsed(c => !c)}
           className="text-xs text-slate-500 uppercase tracking-wide hover:text-slate-300 transition-colors flex items-center gap-1 shrink-0"
@@ -254,45 +254,51 @@ export function EUMap({ state, dispatch }: Props) {
           <span className="text-[10px]">{collapsed ? '▶' : '▼'}</span>
           EU Map
         </button>
-
         {!collapsed && (
-          <>
-            <select
-              value={metric}
-              onChange={e => setMetric(e.target.value as MapMetric)}
-              className="text-xs bg-slate-700 border border-slate-600 text-slate-200 rounded px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
-            >
-              {METRIC_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-
-            <span className="text-xs text-slate-600">Click to add · click again to remove</span>
-
-            {!canAdd && (
-              <span className="text-xs text-amber-400">
-                Max {MAX_CARDS} cards — remove a country first
-              </span>
-            )}
-          </>
+          <span className="text-xs text-slate-600">Click to add · click again to remove</span>
+        )}
+        {!collapsed && !canAdd && (
+          <span className="text-xs text-amber-400">
+            Max {MAX_CARDS} cards — remove a country first
+          </span>
         )}
       </div>
 
-      {/* Map */}
+      {/* Body: left metric panel + map */}
       {!collapsed && (
-        <div className="px-2 pb-2">
-          <Plot
-            data={traces}
-            layout={plotLayout}
-            config={{
-              displayModeBar: false,
-              scrollZoom: false,
-              staticPlot: false,
-            }}
-            style={{ width: '100%', height: 360 }}
-            onClick={handleClick}
-            useResizeHandler
-          />
+        <div className="flex">
+          {/* Metric selector panel — matches SectionNav width */}
+          <div className="flex flex-col gap-0.5 w-32 shrink-0 px-1.5 pb-2 border-r border-slate-700/70">
+            {METRIC_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => setMetric(o.value)}
+                className={`text-left px-2 py-1 text-[11px] rounded leading-tight transition-all border ${
+                  metric === o.value
+                    ? 'bg-sky-900/50 border-sky-700/50 text-sky-300'
+                    : 'bg-transparent border-transparent text-slate-600 hover:text-slate-400 hover:bg-slate-800/40'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Map */}
+          <div className="flex-1 px-2 pb-2 min-w-0">
+            <Plot
+              data={traces}
+              layout={plotLayout}
+              config={{
+                displayModeBar: false,
+                scrollZoom: false,
+                staticPlot: false,
+              }}
+              style={{ width: '100%', height: 360 }}
+              onClick={handleClick}
+              useResizeHandler
+            />
+          </div>
         </div>
       )}
     </div>

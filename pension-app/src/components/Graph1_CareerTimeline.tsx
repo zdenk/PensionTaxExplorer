@@ -15,7 +15,7 @@ import {
   LabelList,
   ReferenceLine,
 } from 'recharts';
-import type { ScenarioResult } from '../types';
+import type { ScenarioResult, CountryConfig } from '../types';
 
 interface Props {
   result: ScenarioResult;
@@ -23,6 +23,7 @@ interface Props {
   countryCurrency: string;
   eurExchangeRate: number;
   retirementAge: number;
+  country?: CountryConfig;
 }
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ export function Graph1_CareerTimeline({
   return (
     <div className="mt-4">
       <h3 className="text-xs text-slate-500 uppercase tracking-wide mb-2">
-        Monthly Snapshot
+        Present-Day Snapshot
       </h3>
 
       <ResponsiveContainer width="100%" height={chartHeight}>

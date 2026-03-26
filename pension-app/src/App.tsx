@@ -2,14 +2,14 @@
  * App — EU27 Pension & Tax Burden Explorer
  */
 
-import { useReducer, useState, useEffect, useRef } from 'react';
+import { useReducer, useState, useEffect, useRef, useCallback } from 'react';
 import { usePostHog } from '@posthog/react';
 import { appReducer, INITIAL_STATE } from './state/appReducer';
 import { COUNTRY_MAP } from './data/countryRegistry';
 import { computeScenario } from './utils/computeScenario';
 import { ControlsBar } from './components/ControlsBar';
 import { EUMap } from './components/EUMap';
-import { CountryCard } from './components/CountryCard';
+import { CountryGrid } from './components/CountryGrid';
 import { ComparisonCharts } from './components/ComparisonCharts';
 import { SourcesPage } from './components/SourcesPage';
 import { PrivacyNotice } from './components/PrivacyNotice';
@@ -22,9 +22,20 @@ function cardKey(code: string, modeName: string | null) {
   return modeName ? `${code}::${modeName}` : code;
 }
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  const handler = useCallback(() => setIsMobile(window.innerWidth < breakpoint), [breakpoint]);
+  useEffect(() => {
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [handler]);
+  return isMobile;
+}
+
 export default function App() {
   const posthog = usePostHog();
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
+  const isMobile = useIsMobile();
   const [showSources, setShowSources] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -236,7 +247,7 @@ export default function App() {
           <SourcesPage onClose={() => setShowSources(false)} />
         </div>
       ) : (
-      <main className="flex-1 overflow-auto p-4">
+      <main className="flex-1 p-4">
         {state.selectedCountries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <p className="text-slate-500 text-lg mb-2">No countries selected</p>
@@ -245,37 +256,32 @@ export default function App() {
             </p>
           </div>
         ) : (
-          <div
-            className="grid gap-4 items-start"
-            style={{
-              gridTemplateColumns: `repeat(${cardSpecs.length}, minmax(0, 1fr))`,
-            }}
-          >
-            {cardSpecs.map(({ code, modeName }) => {
-              const country = COUNTRY_MAP[code];
-              const result = scenarios[cardKey(code, modeName)];
-              if (!country || !result) return null;
-              return (
-                <CountryCard
-                  key={cardKey(code, modeName)}
-                  country={country}
-                  result={result}
-                  selfEmploymentModeName={modeName}
-                  appState={state}
-                  dispatch={dispatch}
-                />
-              );
-            })}
-          </div>
+          <>
+            {isMobile && cardSpecs.length > 1 && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-sky-800 bg-sky-950/60 px-4 py-3 text-sm text-sky-300">
+                <span className="mt-0.5 shrink-0 text-base">💻</span>
+                <span>
+                  Showing 1 country on mobile. Open on a <strong>laptop or desktop</strong> to compare multiple countries side by side.
+                </span>
+              </div>
+            )}
+            <CountryGrid
+              cardSpecs={isMobile ? cardSpecs.slice(0, 1) : cardSpecs}
+              scenarios={scenarios}
+              appState={state}
+              dispatch={dispatch}
+            />
+            {showComparison && (
+              <ComparisonCharts
+                entries={comparisonEntries}
+                wageMode={state.wageMode}
+                careerOverrides={state.careerOverrides}
+                appState={state}
+              />
+            )}
+          </>
         )}
 
-        {/* Cross-country comparison charts */}
-        {showComparison && (
-          <ComparisonCharts
-            entries={comparisonEntries}
-            wageMode={state.wageMode}
-          />
-        )}
       </main>
       )}
 
