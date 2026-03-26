@@ -322,7 +322,7 @@ export function Graph3_ReplacementRateCurve({ country, result, careerOverrides, 
           />
 
           {/* Pension formula reduction thresholds (DB systems) */}
-          {reductionThresholds.map((t, i) => {
+          {reductionThresholds.map((_t, i) => {
             const xVal = thresholdMultipliers[i];
             if (xVal > xHigh + 0.001) return null;
             // RR at this exact threshold point (already in `data` since we inserted it)
