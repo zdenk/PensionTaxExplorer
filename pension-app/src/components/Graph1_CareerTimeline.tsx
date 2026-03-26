@@ -16,7 +16,6 @@ import {
   ReferenceLine,
 } from 'recharts';
 import type { ScenarioResult, CountryConfig } from '../types';
-import { getReductionThresholds } from './Graph3_ReplacementRateCurve';
 
 interface Props {
   result: ScenarioResult;
@@ -74,7 +73,6 @@ export function Graph1_CareerTimeline({
   currency,
   countryCurrency,
   eurExchangeRate,
-  country,
 }: Props) {
   const { sscResult, taxResult, pensionResult, fairReturn } = result;
   const gross = result.resolvedWage.grossLocal;
@@ -109,9 +107,6 @@ export function Graph1_CareerTimeline({
 
   // x-axis domain: widest bar is employer cost (including benefits)
   const xMax = Math.max(totalEmployerCostFull, gross / fx) * 1.01;
-
-  // Reduction thresholds for DB pension systems (e.g. CZ)
-  const reductionThresholds = country ? getReductionThresholds(country) : [];
 
   // Build one dataset entry per bar row
   type BarRow = {
@@ -155,7 +150,7 @@ export function Graph1_CareerTimeline({
   return (
     <div className="mt-4">
       <h3 className="text-xs text-slate-500 uppercase tracking-wide mb-2">
-        Monthly Snapshot
+        Present-Day Snapshot
       </h3>
 
       <ResponsiveContainer width="100%" height={chartHeight}>
@@ -210,29 +205,6 @@ export function Graph1_CareerTimeline({
               dy: -4,
             }}
           />
-
-          {/* ── Pension formula reduction thresholds (DB systems) ── */}
-          {reductionThresholds.map((t, i) => {
-            const xVal = t.upTo / fx;
-            if (xVal > xMax) return null;
-            const nextRate = reductionThresholds[i + 1]?.creditRate ?? 0;
-            return (
-              <ReferenceLine
-                key={`rt${i}`}
-                x={xVal}
-                stroke="#f59e0b"
-                strokeDasharray="3 2"
-                strokeWidth={1}
-                label={{
-                  value: `${(nextRate * 100).toFixed(0)}%↓`,
-                  position: 'insideTopRight',
-                  fontSize: 8,
-                  fill: '#f59e0b',
-                  dy: -4,
-                }}
-              />
-            );
-          })}
 
           {/* ── Employer cost segments ── */}
           <Bar dataKey="netPay"       stackId="s" fill="#22c55e" name="Net Pay"               isAnimationActive={false} />
