@@ -20,6 +20,8 @@ const POSTHOG_HOST =
 // cookieless_mode: 'on_reject' — prevents PostHog writing its own persistence
 //   entry (cookie or localStorage) before the user has given consent.
 if (POSTHOG_TOKEN) {
+  // Expose on window so the PostHog toolbar bookmarklet can find it.
+  (window as any).posthog = posthog;
   posthog.init(POSTHOG_TOKEN, {
     api_host: POSTHOG_HOST,
     defaults: '2026-01-30',
