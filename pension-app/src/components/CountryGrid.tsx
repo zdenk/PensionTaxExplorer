@@ -8,7 +8,7 @@
  *     so the same information is always horizontally aligned.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import type { AppState, ScenarioResult } from '../types';
 import type { AppAction } from '../state/appReducer';
 import { COUNTRY_MAP } from '../data/countryRegistry';
@@ -20,7 +20,6 @@ import { Graph1_CareerTimeline } from './Graph1_CareerTimeline';
 import { Graph2_Accumulation, WagePieChart } from './Graph2_Accumulation';
 import { Graph3_ReplacementRateCurve } from './Graph3_ReplacementRateCurve';
 import { WageDistributionChart } from './WageDistributionChart';
-import { ComparisonCharts } from './ComparisonCharts';
 import {
   CountryHeader,
   IncompleteBanner,
@@ -39,7 +38,6 @@ const SECTIONS = [
   { id: 'timeline',     label: 'Timeline' },
   { id: 'accumulation', label: 'Accumulation' },
   { id: 'rr-curve',     label: 'RR Curve' },
-  { id: 'comparison',   label: 'Comparison' },
 ] as const;
 
 type SectionId = typeof SECTIONS[number]['id'];
@@ -201,31 +199,6 @@ export function CountryGrid({ cardSpecs, scenarios, appState, dispatch }: Props)
     new Set(SECTIONS.map(s => s.id)),
   );
   const [navCollapsed, setNavCollapsed] = useState(false);
-  const [navFixed, setNavFixed] = useState(false);
-  const navWrapperRef = useRef<HTMLDivElement>(null);
-  const countriesRef = useRef<HTMLDivElement>(null);
-  const navFixedLeft = useRef(0);
-  const isFixed = useRef(false);
-
-  useEffect(() => {
-    const onScroll = () => {
-      if (!countriesRef.current || !navWrapperRef.current) return;
-      const top = countriesRef.current.getBoundingClientRect().top;
-      if (top < 16) {
-        if (!isFixed.current) {
-          navFixedLeft.current = navWrapperRef.current.getBoundingClientRect().left;
-        }
-        isFixed.current = true;
-        setNavFixed(true);
-      } else {
-        isFixed.current = false;
-        setNavFixed(false);
-      }
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   const navigate = (id: SectionId) => {
     if (!visible.has(id)) {
       setVisible(prev => new Set([...prev, id]));
@@ -250,17 +223,6 @@ export function CountryGrid({ cardSpecs, scenarios, appState, dispatch }: Props)
   const cols = cardSpecs.length;
   const currency = appState.currency;
 
-  // Entries for cross-country comparison (fixed-wage modes only, 2+ countries)
-  const comparisonEntries = appState.selectedCountries
-    .map((code) => {
-      const country = COUNTRY_MAP[code];
-      const firstMode = appState.selfEmploymentModes[code]?.[0] ?? null;
-      const result = scenarios[cardKey(code, firstMode)];
-      if (!country || !result) return null;
-      return { code, country, result };
-    })
-    .filter((e): e is NonNullable<typeof e> => e !== null);
-
   // Pre-compute per-card derived values
   const cards = cardSpecs.map(({ code, modeName }) => {
     const country = COUNTRY_MAP[code]!;
@@ -283,23 +245,16 @@ export function CountryGrid({ cardSpecs, scenarios, appState, dispatch }: Props)
     <div className="flex gap-4">
 
       {/* ── Section navigator ───────────────────────────────────────────────
-          The wrapper reserves space in the layout. When the countries anchor
-          scrolls off the top, the inner div switches to position:fixed so it
-          follows the user down the page.                                    */}
+          The wrapper stretches to the full height of the content column
+          (flex default align-items: stretch). The inner div is sticky so it
+          follows the user while scrolling but stops at the wrapper's bottom,
+          which coincides with the end of the CountryGrid — it cannot drift
+          into the Cross-country Comparison section below.                  */}
       <div
-        ref={navWrapperRef}
-        className="hidden md:block shrink-0"
+        className="hidden md:block shrink-0 self-stretch"
         style={{ width: navCollapsed ? '1.75rem' : '8rem' }}
       >
-        <div
-          style={navFixed ? {
-            position: 'fixed',
-            top: '1rem',
-            left: `${navFixedLeft.current}px`,
-            width: navCollapsed ? '1.75rem' : '8rem',
-            zIndex: 40,
-          } : undefined}
-        >
+        <div style={{ position: 'sticky', top: '1rem' }}>
           <SectionNav
             collapsed={navCollapsed}
             onCollapse={setNavCollapsed}
@@ -315,7 +270,6 @@ export function CountryGrid({ cardSpecs, scenarios, appState, dispatch }: Props)
 
         {/* ── Country headers ──────────────────────────────────────────── */}
         <div
-          ref={countriesRef}
           id="section-countries"
           className="grid gap-4 items-start"
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
@@ -484,22 +438,6 @@ export function CountryGrid({ cardSpecs, scenarios, appState, dispatch }: Props)
               </Cell>
             ))}
           </SectionRow>
-        )}
-
-        {/* ── Cross-country Comparison ─────────────────────────────────── */}
-        {show('comparison') && comparisonEntries.length >= 2 && (
-          <div id="section-comparison" className="mt-8">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap shrink-0">
-                Cross-country Comparison
-              </span>
-              <div className="flex-1 h-px bg-slate-700/50" />
-            </div>
-            <ComparisonCharts
-              entries={comparisonEntries}
-              wageMode={appState.wageMode}
-            />
-          </div>
         )}
 
       </div>

@@ -2,12 +2,14 @@
  * ComparisonCharts — rendered below the country cards when
  * wageMode is 'fixed_gross_eur' or 'fixed_employer_cost_eur' and 2+ countries are selected.
  *
- * Three panels:
+ * Four panels (user-selectable via sidebar):
  *  A. Monthly Cost Breakdown  — horizontal stacked bar, one row per country
  *  B. Monthly Pension Output  — grouped bar chart, one group per metric, bars per country
  *  C. Pension Accumulation    — multi-line chart, colour = country, dash = metric
+ *  D. Replacement Rate Curve  — all-country RR curves overlaid on one chart
  */
 
+import { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -21,8 +23,9 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import type { CountryConfig, ScenarioResult, WageMode } from '../types';
+import type { CountryConfig, ScenarioResult, WageMode, CareerDefaults } from '../types';
 import { FLAG } from '../data/countryRegistry';
+import { PensionEngine } from '../engines/PensionEngine';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -32,9 +35,21 @@ export interface CountryScenario {
   result: ScenarioResult;
 }
 
+// ─── Comparison view registry ─────────────────────────────────────────────────
+
+export type ComparisonViewId = 'cost' | 'pension' | 'accumulation' | 'rr-curve';
+
+const COMPARISON_VIEWS: { id: ComparisonViewId; label: string }[] = [
+  { id: 'cost',         label: 'Monthly Cost Breakdown (€)' },
+  { id: 'pension',      label: 'Monthly Pension Output (€)' },
+  { id: 'accumulation', label: 'Pension Accumulation Over Career (€)' },
+  { id: 'rr-curve',    label: 'Replacement Rate Curve' },
+];
+
 interface Props {
   entries: CountryScenario[];
   wageMode: WageMode;
+  careerOverrides: Partial<CareerDefaults>;
 }
 
 // ─── Country colour palette ───────────────────────────────────────────────────
@@ -532,10 +547,211 @@ function AccumulationChart({ entries }: { entries: CountryScenario[] }) {
   );
 }
 
+// ─── D. Replacement Rate Curve (comparison) ───────────────────────────────────
+
+function ComparisonRRCurveChart({
+  entries,
+  careerOverrides,
+}: {
+  entries: CountryScenario[];
+  careerOverrides: Partial<CareerDefaults>;
+}) {
+  const LOW  = 0.5;
+  const HIGH = 4.0;
+  const STEP = 0.05;
+  const multipliers = Array.from(
+    { length: Math.round((HIGH - LOW) / STEP) + 1 },
+    (_, i) => +(LOW + i * STEP).toFixed(2),
+  );
+
+  // Build data: one row per multiplier, one gross-RR field per country
+  const data = multipliers.map((m) => {
+    const row: Record<string, number> = { multiplier: m };
+    entries.forEach(({ code, country }) => {
+      const retirementAge  = careerOverrides.retirementAge  ?? country.defaults.retirementAge;
+      const careerStartAge = careerOverrides.careerStartAge ?? country.defaults.careerStartAge;
+      const careerYears    = retirementAge - careerStartAge;
+      const grossMonthly   = country.averageWage * m;
+      const pr = PensionEngine.calculate(country, grossMonthly, careerYears, retirementAge);
+      row[code] = grossMonthly > 0 ? +((pr.monthlyPension / grossMonthly) * 100).toFixed(1) : 0;
+    });
+    return row;
+  });
+
+  const allRR = data.flatMap((row) => entries.map(({ code }) => row[code] ?? 0));
+  const yMax  = Math.ceil(Math.max(...allRR) / 10) * 10 + 10;
+
+  // Current wage multiplier per country (for reference lines)
+  const currentMultipliers = entries.map(({ code, country, result }, idx) => ({
+    code,
+    idx,
+    multiplier: +(
+      result.resolvedWage.impliedMultiplier ??
+      (country.averageWage > 0 ? result.resolvedWage.grossLocal / country.averageWage : 1)
+    ).toFixed(4),
+  }));
+
+  return (
+    <Panel title="Replacement Rate Curve">
+      <ResponsiveContainer width="100%" height={280}>
+        <LineChart data={data} margin={{ top: 14, right: 16, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+          <XAxis
+            dataKey="multiplier"
+            type="number"
+            domain={[LOW, HIGH]}
+            ticks={[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]}
+            tickFormatter={(v: number) => `${v}×`}
+            tick={{ fontSize: 10, fill: '#64748b' }}
+            tickLine={false}
+            axisLine={{ stroke: '#334155' }}
+          />
+          <YAxis
+            domain={[0, yMax]}
+            tickFormatter={(v: number) => `${v}%`}
+            tick={{ fontSize: 10, fill: '#64748b' }}
+            tickLine={false}
+            width={38}
+          />
+          <Tooltip
+            content={(p) => {
+              if (!p.active || !p.payload?.length) return null;
+              const visible = (p.payload as { name: string; value: number; color: string }[])
+                .filter((e) => e.value !== undefined && e.value !== null);
+              if (!visible.length) return null;
+              return (
+                <div className="bg-slate-900/95 border border-slate-700 rounded-lg px-3 py-2 text-xs shadow-xl">
+                  <p className="font-semibold text-slate-300 mb-1.5">{p.label}× AW</p>
+                  {visible.map((e, i) => (
+                    <div key={i} className="flex justify-between gap-4 mb-0.5">
+                      <span style={{ color: e.color }}>{e.name}</span>
+                      <span className="text-slate-100 font-mono">{e.value.toFixed(1)} %</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            }}
+          />
+          {/* OECD adequacy benchmarks */}
+          <ReferenceLine y={70} stroke="#4ade80" strokeDasharray="4 3" strokeWidth={1}
+            label={{ value: '70%', position: 'insideTopRight', fontSize: 9, fill: '#4ade80', dy: -2 }} />
+          <ReferenceLine y={50} stroke="#facc15" strokeDasharray="4 3" strokeWidth={1}
+            label={{ value: '50%', position: 'insideTopRight', fontSize: 9, fill: '#facc15', dy: -2 }} />
+
+          {/* Current wage reference lines — one per country */}
+          {currentMultipliers.map(({ code, idx, multiplier }) => (
+            <ReferenceLine
+              key={`ref-${code}`}
+              x={multiplier}
+              stroke={countryColor(code, idx)}
+              strokeDasharray="3 3"
+              strokeWidth={1}
+              opacity={0.5}
+            />
+          ))}
+
+          {/* One line per country */}
+          {entries.map(({ code, country }, idx) => (
+            <Line
+              key={code}
+              dataKey={code}
+              name={`${FLAG[code] ?? ''} ${country.name}`}
+              stroke={countryColor(code, idx)}
+              strokeWidth={1.5}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+
+      {/* Legend */}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+        {entries.map(({ code, country }, idx) => (
+          <span key={code} className="flex items-center gap-1.5 text-xs">
+            <span
+              style={{
+                display: 'inline-block',
+                width: 20,
+                height: 3,
+                background: countryColor(code, idx),
+                borderRadius: 2,
+              }}
+            />
+            <span className="text-slate-300">{FLAG[code] ?? ''} {country.name}</span>
+          </span>
+        ))}
+        <span className="text-slate-600 text-xs self-center ml-2">· Gross RR · Career length per country defaults</span>
+      </div>
+    </Panel>
+  );
+}
+
+// ─── Comparison sidebar navigator ─────────────────────────────────────────────
+
+// ─── Comparison sidebar navigator ────────────────────────────────────────────────
+//
+// Mirrors the SectionNav in CountryGrid: sticky float that follows the user
+// while scrolling through the comparison charts.
+
+const NAV_WIDTH = '11rem'; // enough for the longest label
+
+function ComparisonNav({
+  visible,
+  onToggle,
+}: {
+  visible: Set<ComparisonViewId>;
+  onToggle: (id: ComparisonViewId) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 bg-slate-900/95 backdrop-blur-sm border border-slate-700/70 rounded-lg p-1.5 shadow-2xl">
+
+      {/* Header */}
+      <p className="text-[9px] text-slate-500 uppercase tracking-widest px-1 pb-1 mb-0.5 border-b border-slate-800">
+        Views
+      </p>
+
+      {/* View toggles */}
+      {COMPARISON_VIEWS.map(({ id, label }) => {
+        const on = visible.has(id);
+        return (
+          <div key={id} className="flex items-center gap-0.5">
+            <button
+              onClick={() => onToggle(id)}
+              title={on ? `Hide: ${label}` : `Show: ${label}`}
+              className={`flex-1 px-2 py-1 text-[11px] rounded text-left leading-tight transition-all border ${
+                on
+                  ? 'bg-sky-900/50 border-sky-700/50 text-sky-300'
+                  : 'bg-transparent border-transparent text-slate-600 hover:text-slate-400 hover:bg-slate-800/40'
+              }`}
+            >
+              {label}
+            </button>
+            {on && (
+              <button
+                onClick={() => onToggle(id)}
+                title={`Hide: ${label}`}
+                className="text-slate-400 hover:text-red-400 hover:bg-red-900/30 text-[11px] px-1 py-0.5 rounded leading-none transition-colors"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function ComparisonCharts({ entries, wageMode }: Props) {
-  // Only show for fixed-amount wage modes with 2+ countries
+export function ComparisonCharts({ entries, wageMode, careerOverrides }: Props) {
+  const [visible, setVisible] = useState<Set<ComparisonViewId>>(
+    () => new Set<ComparisonViewId>(['cost', 'pension', 'accumulation', 'rr-curve']),
+  );
+
+  // ── Early exit guards ──────────────────────────────────────────────
   if (entries.length < 2) return null;
   if (wageMode.type === 'multiplier') return null;
 
@@ -544,31 +760,62 @@ export function ComparisonCharts({ entries, wageMode }: Props) {
       ? `Fixed Gross €${wageMode.value.toLocaleString()}`
       : `Fixed Employer Cost €${wageMode.value.toLocaleString()}`;
 
+  const toggle = (id: ComparisonViewId) =>
+    setVisible((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const show = (id: ComparisonViewId) => visible.has(id);
+
   return (
-    <section className="mt-6 border-t border-slate-700/60 pt-6">
-      {/* Section header */}
-      <div className="mb-4 flex items-center gap-3 px-0.5">
-        <h2 className="text-sm font-semibold text-sky-400 uppercase tracking-wide">
-          Cross-Country Comparison
-        </h2>
-        <span className="text-xs text-slate-400 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 font-mono">
+    <div id="section-comparison" className="mt-8">
+
+      {/* ─ Top divider row — mirrors SectionRow header ────────────────────── */}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap shrink-0">
+          Cross-country Comparison
+        </span>
+        <div className="flex-1 h-px bg-slate-700/50" />
+        <span className="text-xs text-slate-500 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 font-mono shrink-0">
           {wageModeLabel}
         </span>
-        <span className="text-xs text-slate-600">
-          {entries.length} countries · all values in €
+        <span className="text-xs text-slate-600 shrink-0">
+          {entries.length} countries
         </span>
       </div>
 
-      {/* Top row: cost breakdown + pension output side-by-side */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <CostBreakdownChart entries={entries} />
-        <PensionOutputChart entries={entries} />
-      </div>
+      {/* ─ Sidebar + charts flex row ─────────────────────────────────── */}
+      <div className="flex gap-4">
 
-      {/* Full-width accumulation chart */}
-      <div className="mt-4">
-        <AccumulationChart entries={entries} />
+        {/* Nav wrapper — self-stretch so the sticky inner div stays within
+            this section's height and never leaks into content below.       */}
+        <div
+          className="hidden md:block shrink-0 self-stretch"
+          style={{ width: NAV_WIDTH }}
+        >
+          <div style={{ position: 'sticky', top: '1rem' }}>
+            <ComparisonNav visible={visible} onToggle={toggle} />
+          </div>
+        </div>
+
+        {/* Chart stack */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
+          {show('cost') && <CostBreakdownChart entries={entries} />}
+          {show('pension') && <PensionOutputChart entries={entries} />}
+          {show('accumulation') && <AccumulationChart entries={entries} />}
+          {show('rr-curve') && (
+            <ComparisonRRCurveChart entries={entries} careerOverrides={careerOverrides} />
+          )}
+          {visible.size === 0 && (
+            <div className="text-sm text-slate-500 italic py-6 text-center">
+              Select a view from the sidebar to display charts.
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import { computeScenario } from './utils/computeScenario';
 import { ControlsBar } from './components/ControlsBar';
 import { EUMap } from './components/EUMap';
 import { CountryGrid } from './components/CountryGrid';
+import { ComparisonCharts } from './components/ComparisonCharts';
 import { SourcesPage } from './components/SourcesPage';
 import { PrivacyNotice } from './components/PrivacyNotice';
 import { ConsentBanner } from './components/ConsentBanner';
@@ -246,7 +247,7 @@ export default function App() {
           <SourcesPage onClose={() => setShowSources(false)} />
         </div>
       ) : (
-      <main className="flex-1 overflow-auto p-4">
+      <main className="flex-1 p-4">
         {state.selectedCountries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <p className="text-slate-500 text-lg mb-2">No countries selected</p>
@@ -270,6 +271,13 @@ export default function App() {
               appState={state}
               dispatch={dispatch}
             />
+            {showComparison && (
+              <ComparisonCharts
+                entries={comparisonEntries}
+                wageMode={state.wageMode}
+                careerOverrides={state.careerOverrides}
+              />
+            )}
           </>
         )}
 
