@@ -9,6 +9,10 @@
  *   - Zákon č. 589/1992 Sb. (SSC contributions)
  *   - Zákon č. 586/1992 Sb. (Income Tax Act)
  *   - Nařízení vlády (Government Decree) for pension year 2026
+ *
+ * 2026-03-26 update: OSVČ minimum social advance reduced 5,720 → 5,005 CZK/month
+ *   retroactively from Jan 2026 (Sněmovna vote 25.3.2026; pending Senate + Presidential sign.).
+ *   PD Band 1 total: 9,984 → 9,162 CZK/month (social: 6,578 → 5,756 CZK).
  */
 
 import type { CountryConfig } from '../types';
@@ -30,9 +34,10 @@ const AW_2026 = 48_967;
 //
 // 2026 official monthly payments (source: Finanční správa ČR / ČSSZ decree 2026):
 //
-//   Band 1: total 9,984 CZK/month
-//     = 100 CZK (daň) + 6,578 CZK (soc, base 22,527 CZK) + 3,306 CZK (zdrav, base 24,484 CZK)
-//     Note: social base = 40% of PD reference AW; health base = 50% of AW_2026.
+//   Band 1: total 9,162 CZK/month (retroactively from Jan 2026 — Sněmovna 25.3.2026)
+//     = 100 CZK (daň) + 5,756 CZK (soc, base 19,712 CZK) + 3,306 CZK (zdrav, base 24,484 CZK)
+//     Note: social base ≈ 115% × OSVČ min advance 5,005 CZK; health base = 50% of AW_2026.
+//     Was: 9,984 CZK/month (100 + 6,578 + 3,306) before the Babišova novela.
 //
 //   Band 2: total 16,745 CZK/month
 //     = 4,963 CZK (daň) + 8,191 CZK (soc, base 28,050 CZK) + 3,591 CZK (zdrav, base 26,600 CZK)
@@ -43,12 +48,14 @@ const PD_BAND1_LIMIT = 1_000_000;
 const PD_BAND2_LIMIT = 1_500_000;
 
 /**
- * Band 1: social assessment base = 22,527 CZK/month
- * Derived: 6,578 CZK ÷ 29.2% = 22,527 CZK (~40% of PD reference AW).
- * Band 1 health assessment base re-uses the standard 50% of AW_2026 = 24,484 CZK
+ * Band 1: social assessment base — reduced retroactively from Jan 2026.
+ * Babišova novela (Sněmovna 25.3.2026): OSVČ min advance 5,720 → 5,005 CZK/month. (~35% of PD reference AW).
+ * PD Band 1 social = 115% × OSVČ min advance = 5,005 × 1.15 = 5,756 CZK/month.
+ * Derived: Math.round(5,756 ÷ 29.2%) = 19,712 CZK (was: 22,527 CZK → 6,578 CZK).
+ * Band 1 health assessment base unchanged: 50% of AW_2026 = 24,484 CZK
  * (13.5% × 24,484 → ceil = 3,306 CZK).
  */
-const PD_BAND1_SOCIAL_BASE = 22_527; // CZK/month — gives exactly 6,578 CZK social (29.2%)
+const PD_BAND1_SOCIAL_BASE = Math.round(5_756 / 0.292); // 19,712 CZK → ≈5,756 CZK social (29.2%). Was 22_527 pre-novela.
 
 /**
  * Band 2: explicit assessment bases from the 2026 decree.
@@ -509,6 +516,14 @@ export const czechRepublic: CountryConfig = {
       retrievedDate: '2026-03',
       dataYear: 2026,
     },
+    // ── 2026-03-26: Babišova novela — OSVČ minimum social advance reduction ───
+    {
+      parameter: 'selfEmployment.modes[OSVČ].minSocialInsuranceBase + PD_BAND1_SOCIAL_BASE',
+      source: 'Peníze.cz — Minimální zálohy na sociální pojištění se zpětně sníží (25.3.2026)',
+      url: 'https://www.penize.cz/socialni-pojisteni/487450-minimalni-zalohy-na-socialni-pojisteni-se-zpetne-snizi-spocitame-vam-kolik-muzete-dostat-zpatky',
+      retrievedDate: '2026-03-26',
+      dataYear: 2026,
+    },
     {
       parameter: 'employerBenefits.pension_contrib',
       source: 'Zákon č. 586/1992 Sb. §6(9)(l); zákon č. 427/2011 Sb. (DPS); zákon č. 277/2009 Sb. (pojišťovnictví)',
@@ -550,8 +565,10 @@ export const czechRepublic: CountryConfig = {
         // ── OSVČ-specific assessment-base rules ──────────────────────────────
         assessmentBasisRate: 0.5,     // 50% of profit → vyměřovací základ
 
-        // Source: §5b(2) zákon č. 589/1992 Sb. — 25% of monthly AW
-        minSocialInsuranceBase: Math.round(0.25 * AW_2026), // 12,242 CZK/month
+        // Babišova novela (Sněmovna 25.3.2026): minimum social advance → 5,005 CZK/month
+        // retroactively from Jan 2026. Prior Fiala reform (2024–2026) had increased it to
+        // 5,720 CZK/month (40% × AW). Original §5b(2) zákon č. 589/1992 Sb. rate was 25%.
+        minSocialInsuranceBase: Math.round(5_005 / 0.292), // 17,140 CZK → 5,005 CZK advance/month
 
         // Source: §3a zákon č. 592/1992 Sb. — 50% of monthly AW
         minHealthInsuranceBase: Math.round(0.50 * AW_2026), // 24,484 CZK/month
@@ -585,16 +602,17 @@ export const czechRepublic: CountryConfig = {
 
       // ─── Paušální daň — Pásmo 1 ─────────────────────────────────────────────
       // Valid for annual gross income ≤ 1,000,000 CZK.
-      // Monthly lump sum: 9,984 CZK = 100 (daň) + 6,578 (soc) + 3,306 (zdrav).
-      // Social base: 22,527 CZK (40% of PD reference AW). Health base: 24,484 CZK (50% AW_2026).
-      // Source: Finanční správa ČR; Zákon č. 7/2021 Sb. §7a–§7h.
+      // Monthly lump sum: 9,162 CZK = 100 (daň) + 5,756 (soc) + 3,306 (zdrav). [from Jan 2026]
+      // Was: 9,984 CZK (100+6,578+3,306) before Babišova novela (Sněmovna 25.3.2026).
+      // Social base: 19,712 CZK (= 115% × OSVČ min advance 5,005 CZK). Health base: 24,484 CZK (50% AW_2026).
+      // Source: Finanční správa ČR; Zákon č. 7/2021 Sb. §7a–§7h; novela přijatá 25.3.2026.
       {
         name: 'Paušální daň – Pásmo 1',
         pensionBasisRate: 0.0,      // pension base = minSocialInsuranceBase (via max(0, min))
         pillar2Eligible: false,
 
         assessmentBasisRate: 0,     // force SSC onto the fixed band bases (rawBase=0 → min kicks in)
-        minSocialInsuranceBase: PD_BAND1_SOCIAL_BASE, // 22,527 CZK → soc 6,578 CZK/month
+        minSocialInsuranceBase: PD_BAND1_SOCIAL_BASE, // 19,712 CZK → soc ≈5,756 CZK/month (was 22,527 / 6,578 pre-novela)
         minHealthInsuranceBase: Math.round(0.50 * AW_2026), // 24,484 CZK → zdrav 3,306 CZK/month
 
         sscOverrideComponents: [
