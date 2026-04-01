@@ -119,7 +119,59 @@ export const germany: CountryConfig = {
 
   incomplete: false,
 
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('de-DE', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'Sozialversicherungs-Rechengrößenverordnung 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Annual Entgeltpunkte (Pension Points)',
+      formula: 'EP = min(Annual Gross, BBG) / Durchschnittsentgelt',
+      liveValueFn: (_inputs, result) => {
+        const ep = result.pensionResult.formulaInputs['annualPoints'];
+        const avg = result.pensionResult.formulaInputs['referenceWage'];
+        return `${ep.toFixed(4)} EP/year (AW: ${avg.toLocaleString('de-DE')} EUR)`;
+      },
+      explanation:
+        'Every year you earn "points" based on how your salary compares to the national average. One point (1.0 EP) is earned if you earn exactly the average. Points are capped at the contribution ceiling (BBG).',
+      sourceNote: 'SGB VI Anlage 1; SVRV 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 3,
+      label: 'Step 3: Monthly Pension',
+      formula: 'Pension = Total EP × Rentenwert',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.monthlyPension;
+        return `${v.toLocaleString('de-DE', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'At retirement, your total lifetime points are multiplied by the "Rentenwert" (the value of one point, ~40.17 EUR in 2026).',
+      sourceNote: 'DRV Aktueller Rentenwert 2025/2026',
+    },
+    {
+      stepNumber: 4,
+      label: 'Step 4: Replacement Rate',
+      formula: 'Replacement rate = Monthly Pension ÷ Gross Salary',
+      liveValueFn: (_inputs, result) => {
+        const rr = result.pensionResult.replacementRate;
+        return `${(rr * 100).toFixed(1)}%`;
+      },
+      explanation:
+        'The percentage of your pre-retirement gross salary that the state pension replaces.',
+      sourceNote: 'OECD Pensions at a Glance 2023',
+    },
+  ],
   dataSourceRefs: [
     {
       parameter: 'averageWage',

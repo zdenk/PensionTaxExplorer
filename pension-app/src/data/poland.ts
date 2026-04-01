@@ -136,7 +136,49 @@ export const poland: CountryConfig = {
 
   incomplete: false,
 
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'Ustawa o SUS',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Annual NDC Contribution',
+      formula: 'NDC = Gross × 16.60%',
+      liveValueFn: (inputs, result) => {
+        const ceiling = result.pensionResult.formulaInputs['ceiling'];
+        const rate = result.pensionResult.formulaInputs['pillar1ContributionRate'];
+        const annualGross = Math.min(inputs.grossMonthly, ceiling) * 12;
+        const contrib = annualGross * rate;
+        return `${contrib.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN/year`;
+      },
+      explanation:
+        '16.60% of your gross salary is credited to your notional accounts at ZUS (12.22% to the main account and 4.38% to the sub-account).',
+      sourceNote: 'ZUS podział składek',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 3,
+      label: 'Step 3: Monthly Pension (NDC)',
+      formula: 'Pension = Total Account / Life Expectancy (months)',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.pillar1Monthly;
+        return `${v.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN/month`;
+      },
+      explanation:
+        'At retirement, your total notional capital is divided by your remaining life expectancy in months (e.g., 234 months at age 65).',
+      sourceNote: 'GUS Tablice trwania życia',
+    },
+  ],
   dataSourceRefs: [
     {
       parameter: 'averageWage',

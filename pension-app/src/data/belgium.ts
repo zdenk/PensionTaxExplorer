@@ -150,7 +150,33 @@ export const belgium: CountryConfig = {
   },
 
   incomplete: false,
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('fr-BE', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'ONSS / RSZ 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Monthly Pension (Régime Général)',
+      formula: 'Pension = 60% × min(Gross, Ceiling) × (Years / 45)',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.monthlyPension;
+        return `${v.toLocaleString('fr-BE', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'The Belgian state pension replaces 60% of your average career earnings (capped at the benefit ceiling) for a full 45-year career.',
+      sourceNote: 'ONP / RVP 2026',
+    },
+  ],
 
   dataSourceRefs: [
     {

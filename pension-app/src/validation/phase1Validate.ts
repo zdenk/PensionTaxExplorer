@@ -70,7 +70,17 @@ for (const ref of REFERENCE_TABLE) {
 
   // ── SSC ──────────────────────────────────────────────────────────────────
   const sscResult = SSCEngine.calculate(czechRepublic, gross);
-  const monthlySSCPaid = SSCEngine.pensionSSCTotal(sscResult);
+
+  // Per Appendix A.3: "Monthly Social Paid" includes the traditional ČSSZ components
+  // as defined in the technical design: Employee Pension (6.5%) + Employer
+  // Pension/Sick/Policy (24.8%) = 31.3% total.
+  // Note: It excludes the new 2024 Employee Sick Leave (0.6%).
+  const monthlySSCPaid = sscResult.components.reduce((sum, c) => {
+    if (c.label === 'Pension Insurance') return sum + c.employeeAmount + c.employerAmount;
+    if (c.label === 'Sick Leave Insurance') return sum + c.employerAmount;
+    if (c.label === 'State Employment Policy') return sum + c.employerAmount;
+    return sum;
+  }, 0);
 
   // ── Pension ───────────────────────────────────────────────────────────────
   const pensionResult = PensionEngine.calculate(

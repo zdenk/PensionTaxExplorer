@@ -314,18 +314,13 @@ export const czechRepublic: CountryConfig = {
       stepNumber: 4,
       label: 'Step 4: Pension Assessment Base (výpočtový základ)',
       formula:
-        'credited = min(gross, 21,546)×99% + max(0, min(gross, 195,868) − 21,546)×26%',
-      liveValueFn: (inputs, _result) => {
-        const g = inputs.grossMonthly;
-        const t1 = 21_546;
-        const t2 = 195_868;
-        const band1 = Math.min(g, t1) * 0.99;
-        const band2 = Math.max(0, Math.min(g, t2) - t1) * 0.26;
-        const credited = band1 + band2;
+        'credited = min(gross, T1)×99% + max(0, min(gross, T2) − T1)×26%',
+      liveValueFn: (_inputs, result) => {
+        const credited = result.pensionResult.formulaInputs['credited'];
         return `${credited.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} CZK/month`;
       },
       explanation:
-        'The reduction formula compresses higher earners. Only the first 21,546 CZK is nearly fully credited (99%); amounts up to 195,868 CZK get 26%. Nothing above is credited.',
+        'The reduction formula compresses higher earners. Only the first band (44% of average wage) is nearly fully credited (99%); amounts up to the second band (4× average wage) get 26%. Nothing above is credited.',
       sourceNote: 'Zákon č. 155/1995 Sb. § 15; Nařízení vlády 2026',
       isKeyInsight: true,
     },
@@ -358,9 +353,9 @@ export const czechRepublic: CountryConfig = {
       label: 'Step 7: Lifetime Value — Contributions vs. Received',
       formula:
         'Total Paid = (Pension SSC employee + employer) × 12 × career years\nTotal Received = Pension × 12 × retirement years',
-      liveValueFn: (_inputs, result) => {
+      liveValueFn: (inputs, result) => {
         const paid = result.fairReturn.totalContributionsPaid;
-        const received = result.pensionResult.monthlyPension * 12 * 20;
+        const received = result.pensionResult.monthlyPension * 12 * inputs.retirementDuration;
         const diff = received - paid;
         const sign = diff >= 0 ? '+' : '−';
         return (

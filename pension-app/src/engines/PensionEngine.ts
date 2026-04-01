@@ -110,6 +110,7 @@ function calcPensionAccount(
       grossMonthly,
       years,
       annualCreditRate: config.annualCreditRate,
+      ceiling: config.ceiling,
     },
   };
 }
@@ -159,6 +160,8 @@ function calcPoints(
       grossMonthly,
       effectiveMonthly,
       years,
+      referenceWage: config.referenceWage,
+      ceiling: config.ceiling,
     },
   };
 }
@@ -195,6 +198,7 @@ function calcNDC(
       notionalReturnRate: config.notionalReturnRate,
       pillar1ContributionRate: config.pillar1ContributionRate,
       years,
+      ceiling: config.ceiling,
     },
   };
 }

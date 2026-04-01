@@ -166,7 +166,36 @@ export const sweden: CountryConfig = {
   },
 
   incomplete: false,
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('sv-SE', { maximumFractionDigits: 0 })} SEK/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'Skatteverket SKV 401',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Annual NDC Contribution',
+      formula: 'NDC = pensionable income × 16%',
+      liveValueFn: (inputs, result) => {
+        const ceiling = result.pensionResult.formulaInputs['ceiling'];
+        const rate = result.pensionResult.formulaInputs['pillar1ContributionRate'];
+        const income = Math.min(inputs.grossMonthly, ceiling);
+        const contrib = income * 12 * rate;
+        return `${contrib.toLocaleString('sv-SE', { maximumFractionDigits: 0 })} SEK/year`;
+      },
+      explanation:
+        '16% of your pensionable income is credited to your notional account (inkomstpension).',
+      sourceNote: 'SFS 1998:674',
+    },
+  ],
 
   dataSourceRefs: [
     {

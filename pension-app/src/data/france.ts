@@ -179,7 +179,33 @@ export const france: CountryConfig = {
   },
 
   incomplete: false,
-  formulaSteps: [],
+  formulaSteps: [
+    {
+      stepNumber: 1,
+      label: 'Step 1: Total Employer Cost',
+      formula: 'Total Employer Cost = Gross + Employer SSC',
+      liveValueFn: (_inputs, result) => {
+        const v = result.sscResult.totalEmployerCost;
+        return `${v.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'Your employer pays this amount in total. Your contract gross is a subset — the remainder is invisible social charges.',
+      sourceNote: 'URSSAF 2026',
+      isKeyInsight: true,
+    },
+    {
+      stepNumber: 2,
+      label: 'Step 2: Pillar 1 Pension (CNAV)',
+      formula: 'Pension = 50% × SAM × (quarters / 172)',
+      liveValueFn: (_inputs, result) => {
+        const v = result.pensionResult.pillar1Monthly;
+        return `${v.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} EUR/month`;
+      },
+      explanation:
+        'The basic state pension replaces up to 50% of your average salary (SAM, capped at PSS) for a full 43-year career.',
+      sourceNote: 'Code de la Sécurité Sociale L351-1',
+    },
+  ],
 
   dataSourceRefs: [
     {
